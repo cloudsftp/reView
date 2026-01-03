@@ -1,0 +1,13 @@
+[package]
+name = "review-server"
+version = "0.1.0"
+authors = ["Fabian Weik <fabian.weik@protonmail.com>"]
+edition = "2024"
+
+[dependencies]
+libremarkable = { version = "0.7", features = [ "input" ], default-features = false }
+lz-fear = "0.2"
+clap = { version = "4.5", features = [ "derive" ] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.148"
+anyhow = "1.0"
