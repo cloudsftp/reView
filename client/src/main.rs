@@ -1,6 +1,8 @@
-use anyhow::Error;
+use anyhow::{Context, Error};
+use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
+use itertools::Itertools;
 use log::{debug, info};
-use openssh::{KnownHosts, Session};
+use tokio::sync::mpsc;
 
 const HEIGHT: usize = 1872;
 const WIDTH: usize = 1404;
@@ -10,20 +12,52 @@ const FILE: &str = ":mem:";
 const SKIP_OFFSET: usize = 2629636;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), Error> {
     env_logger::Builder::new()
         .filter_level(log::LevelFilter::Debug)
         .parse_default_env()
         .init();
-    run_restream().await.unwrap();
+
+    run_restream().await?;
+
+    Ok(())
 }
 
 async fn run_restream() -> Result<(), Error> {
     info!("connecting to reMarkable");
-    let session = Session::connect("root@192.168.2.118", KnownHosts::Add).await?;
+    let client = Client::connect(
+        ("192.168.2.118", 22),
+        "root",
+        AuthMethod::PrivateKeyFile {
+            key_file_path: "/home/fabi/.ssh/id_ed25519".into(),
+            key_pass: None,
+        },
+        ServerCheckMethod::NoCheck,
+    )
+    .await
+    .context("could not connect to reMarkable tablet")?;
 
-    let mut b = vec![0; 8];
+    let (stdout_tx, mut stdout_rx) = mpsc::channel(10);
     debug!("spawning restream");
+    let exec_future = client.execute_io("./restream --help", stdout_tx, None, None, false, None);
+
+    let mut result_stdout = vec![];
+
+    tokio::pin!(exec_future);
+    let result = loop {
+        tokio::select! {
+            result = &mut exec_future => break result,
+            Some(stdout) = stdout_rx.recv() => {
+                debug!("ssh stdout: {}", String::from_utf8_lossy(&stdout));
+                result_stdout.push(stdout);
+            },
+        };
+    }?;
+
+    debug!("command exited with error code {}", result);
+    debug!("sdtout: {:?}", result_stdout.iter().map(|line| String::from_utf8_lossy(&line)).collect_vec());
+
+    /*
     let mut restream = session
         .command("./restream")
         .args(&[
@@ -40,14 +74,9 @@ async fn run_restream() -> Result<(), Error> {
         ])
         .spawn()
         .await?;
-    debug!("spawned restream");
-    let mut stdout = restream.stdout();
-    match stdout {
-        Some(_) => todo!(),
-        None => panic!("could not get stdout"),
-    }
+    */
 
-    session.close().await?;
+    client.disconnect().await.context("could not disconnect from reMarkable")?;
 
     Ok(())
 }

@@ -2,10 +2,11 @@
 name = "review-client"
 version = "0.1.0"
 authors = ["Fabian Weik <fabian.weik@protonmail.com>"]
+license = "GPL-3.0"
 edition = "2024"
 
 [dependencies]
-openssh = "0.11.6"
+async-ssh2-tokio = "0.12.1"
 lz-fear = "0.2"
 clap = { version = "4.5", features = [ "derive" ] }
 serde = { version = "1.0.228", features = ["derive"] }
@@ -14,3 +15,4 @@ anyhow = "1.0"
 tokio = { version = "1.49.0", features = ["macros", "rt-multi-thread"] }
 log = "0.4.29"
 env_logger = "0.11.8"
+itertools = "0.14.0"

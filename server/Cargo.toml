@@ -2,6 +2,7 @@
 name = "review-server"
 version = "0.1.0"
 authors = ["Fabian Weik <fabian.weik@protonmail.com>"]
+license = "GPL-3.0"
 edition = "2024"
 
 [dependencies]
