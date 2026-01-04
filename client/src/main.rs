@@ -1,8 +1,10 @@
+use std::{process::Stdio, thread};
+
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
-use itertools::Itertools;
+use itertools::Itertools as _;
 use log::{debug, info};
-use tokio::sync::mpsc;
+use tokio::{io::AsyncWriteExt, process::Command, sync::mpsc};
 
 const HEIGHT: usize = 1872;
 const WIDTH: usize = 1404;
@@ -38,45 +40,56 @@ async fn run_restream() -> Result<(), Error> {
     .context("could not connect to reMarkable tablet")?;
 
     let (stdout_tx, mut stdout_rx) = mpsc::channel(10);
-    debug!("spawning restream");
-    let exec_future = client.execute_io("./restream --help", stdout_tx, None, None, false, None);
 
-    let mut result_stdout = vec![];
+    let mut command = Command::new("ffmpeg");
+    command.args(&[
+        "-vcodec",
+        "rawvideo",
+        "-f",
+        "rawvideo",
+        "-pixel_format",
+        PIXEL_FORMAT,
+        "-video_size",
+        &format!("{},{}", WIDTH, HEIGHT),
+        "-i",
+        "-",
+        "/tmp/test.mkv",
+    ]);
+    command.stdin(Stdio::piped());
+    let mut command = command.spawn().context("could not spawn ffmpeg command")?;
+    let mut stdin = command
+        .stdin
+        .take()
+        .context("could not get stdin of ffmpeg")?;
 
-    tokio::pin!(exec_future);
-    let result = loop {
-        tokio::select! {
-            result = &mut exec_future => break result,
-            Some(stdout) = stdout_rx.recv() => {
-                debug!("ssh stdout: {}", String::from_utf8_lossy(&stdout));
-                result_stdout.push(stdout);
-            },
-        };
-    }?;
+    thread::spawn(async move || {
+        debug!("spawning restream");
+        let command = format!(
+            "./restream --height {} --width {} --bytes-per-pixel {} --file {} --skip {}",
+            HEIGHT, WIDTH, BYTES_PER_PIXEL, FILE, SKIP_OFFSET,
+        );
+        let exec_future = client.execute_io(&command, stdout_tx, None, None, false, None);
+        tokio::pin!(exec_future);
+        loop {
+            tokio::select! {
+                result = &mut exec_future => break result,
+                Some(stdout) = stdout_rx.recv() => {
+                    //debug!("ssh stdout: {}", String::from_utf8_lossy(&stdout));
+                    debug!("read some bytes (length: {})", stdout.len());
+                    stdin.write(&stdout).await.unwrap();
+                },
+            };
+        }
+    });
 
-    debug!("command exited with error code {}", result);
-    debug!("sdtout: {:?}", result_stdout.iter().map(|line| String::from_utf8_lossy(&line)).collect_vec());
+
 
     /*
-    let mut restream = session
-        .command("./restream")
-        .args(&[
-            "--height",
-            &HEIGHT.to_string(),
-            "--width",
-            &WIDTH.to_string(),
-            "--bytes-per-pixel",
-            &BYTES_PER_PIXEL.to_string(),
-            "--file",
-            FILE,
-            "--skip",
-            &SKIP_OFFSET.to_string(),
-        ])
-        .spawn()
-        .await?;
+    debug!("command exited with error code {}", result);
+    debug!("sdtout: {:?}", result_stdout.iter().map(|line| String::from_utf8_lossy(&line)).collect_vec());
     */
 
-    client.disconnect().await.context("could not disconnect from reMarkable")?;
+    //client.disconnect().await.context("could not disconnect from reMarkable")?;
 
     Ok(())
 }
