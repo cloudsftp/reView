@@ -1,7 +1,18 @@
+use std::{
+    thread::{sleep},
+    time::Duration,
+};
+
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
-use log::{debug, error, info};
-use tokio::{sync::mpsc::{self, Receiver}};
+use tracing::{debug, error, info};
+use tokio::{
+     net::TcpStream, sync::mpsc::{self, Receiver}
+};
+
+const IP: &str = "192.168.2.118";
+const SSH_PORT: u16 = 22;
+const PORT: u16 = 6680;
 
 const HEIGHT: usize = 1872;
 const WIDTH: usize = 1404;
@@ -10,19 +21,15 @@ const BYTES_PER_PIXEL: usize = 4;
 const FILE: &str = ":mem:";
 const SKIP_OFFSET: usize = 2629636;
 
-const PORT: usize = 6680;
-
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    env_logger::Builder::new()
-        .filter_level(log::LevelFilter::Debug)
-        .parse_default_env()
-        .init();
-
-    //run_restream().await?;
+    tracing_subscriber::fmt::init();
 
     let client = connect_ssh().await?;
     let (restream_command_future, mut restream_command_stdout) = start_server(&client).await?;
+
+    let tcp_task = tokio::spawn(tcp_stream());
+
     tokio::pin!(restream_command_future);
     loop {
         tokio::select! {
@@ -38,6 +45,19 @@ async fn main() -> Result<(), Error> {
     Ok(())
 }
 
+async fn tcp_stream() -> () {
+        info!("started thread");
+        sleep(Duration::from_secs(1));
+        let mut video_stream = TcpStream::connect(format!("{}:{}", IP, PORT))
+            .await
+            .context("could not connect to TCP stream")
+            .unwrap();
+
+    loop {
+        sleep(Duration::from_secs(1));
+    }
+}
+
 async fn receive_output(stdout: &mut Receiver<Vec<u8>>) -> Result<String, Error> {
     let mut buf = vec![];
     while let Some(mut data) = stdout.recv().await {
@@ -49,7 +69,7 @@ async fn receive_output(stdout: &mut Receiver<Vec<u8>>) -> Result<String, Error>
 async fn connect_ssh() -> Result<Client, Error> {
     info!("connecting to reMarkable");
     Client::connect(
-        ("192.168.2.118", 22),
+        (IP, SSH_PORT),
         "root",
         AuthMethod::PrivateKeyFile {
             key_file_path: "/home/fabi/.ssh/id_ed25519".into(),
@@ -61,7 +81,15 @@ async fn connect_ssh() -> Result<Client, Error> {
     .context("could not connect to reMarkable tablet")
 }
 
-async fn start_server(client: &Client) -> Result<(impl Future<Output = Result<u32, async_ssh2_tokio::Error>>, Receiver<Vec<u8>>), Error> {
+async fn start_server(
+    client: &Client,
+) -> Result<
+    (
+        impl Future<Output = Result<u32, async_ssh2_tokio::Error>>,
+        Receiver<Vec<u8>>,
+    ),
+    Error,
+> {
     let (stdout_tx, stdout_rx) = mpsc::channel(10);
 
     let restream_command = Box::leak(Box::new(format!(
