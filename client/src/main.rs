@@ -1,14 +1,12 @@
-use std::{
-    thread::{sleep},
-    time::Duration,
-};
+use std::{thread::sleep, time::Duration};
 
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
-use tracing::{debug, error, info};
 use tokio::{
-     net::TcpStream, sync::mpsc::{self, Receiver}
+    net::TcpStream,
+    sync::mpsc::{self, Receiver},
 };
+use tracing::{debug, error, info};
 
 const IP: &str = "192.168.2.118";
 const SSH_PORT: u16 = 22;
@@ -41,17 +39,14 @@ async fn main() -> Result<(), Error> {
             },
         }
     }
-
-    Ok(())
 }
 
-async fn tcp_stream() -> () {
-        info!("started thread");
-        sleep(Duration::from_secs(1));
-        let mut video_stream = TcpStream::connect(format!("{}:{}", IP, PORT))
-            .await
-            .context("could not connect to TCP stream")
-            .unwrap();
+async fn tcp_stream() -> Result<(), Error> {
+    info!("setting up TCP connection");
+    sleep(Duration::from_secs(1));
+    let mut video_stream = TcpStream::connect(format!("{}:{}", IP, PORT))
+        .await
+        .context("could not connect to TCP stream")?;
 
     loop {
         sleep(Duration::from_secs(1));
@@ -104,22 +99,6 @@ async fn start_server(
 }
 
 /*
-async fn run_restream() -> Result<(), Error> {
-    info!("connecting to reMarkable");
-    let client = Client::connect(
-        ("192.168.2.118", 22),
-        "root",
-        AuthMethod::PrivateKeyFile {
-            key_file_path: "/home/fabi/.ssh/id_ed25519".into(),
-            key_pass: None,
-        },
-        ServerCheckMethod::NoCheck,
-    )
-    .await
-    .context("could not connect to reMarkable tablet")?;
-
-    let (stdout_tx, mut stdout_rx) = mpsc::channel(10);
-
     let mut command = Command::new("ffplay");
     command.args(&[
         "-vcodec",
@@ -133,50 +112,4 @@ async fn run_restream() -> Result<(), Error> {
         "-i",
         "-",
     ]);
-    command.stdin(Stdio::piped());
-    debug!("spawning ffmpeg");
-    let mut command = command.spawn().context("could not spawn ffmpeg command")?;
-    debug!("getting stdin");
-    let mut stdin = command
-        .stdin
-        .take()
-        .context("could not get stdin of ffmpeg")?;
-
-    debug!("spawning restream thread");
-    //let thread = thread::spawn(async move || {
-    let restream_command = format!(
-        "./restream --height {} --width {} --bytes-per-pixel {} --file {} --skip {}",
-        HEIGHT, WIDTH, BYTES_PER_PIXEL, FILE, SKIP_OFFSET,
-    );
-    debug!("spawning restream");
-    let exec_future = client.execute_io(&restream_command, stdout_tx, None, None, false, None);
-    debug!("pinning future");
-    tokio::pin!(exec_future);
-    loop {
-        debug!("selecting");
-        tokio::select! {
-            result = &mut exec_future => break,
-            Some(stdout) = stdout_rx.recv() => {
-                //debug!("ssh stdout: {}", String::from_utf8_lossy(&stdout));
-                debug!("read some bytes (length: {})", stdout.len());
-                stdin.write(&stdout).await.unwrap();
-            },
-        };
-    }
-    //});
-
-    command
-        .wait()
-        .await
-        .context("could not wait for command to finish")?;
-
-    /*
-    debug!("command exited with error code {}", result);
-    debug!("sdtout: {:?}", result_stdout.iter().map(|line| String::from_utf8_lossy(&line)).collect_vec());
-    */
-
-    //client.disconnect().await.context("could not disconnect from reMarkable")?;
-
-    Ok(())
-}
 */
