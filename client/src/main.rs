@@ -22,18 +22,28 @@ async fn main() -> Result<(), Error> {
     //run_restream().await?;
 
     let client = connect_ssh().await?;
-    let (mut restream_command_future, restream_command_stdout) = start_server(&client).await?;
+    let (restream_command_future, mut restream_command_stdout) = start_server(&client).await?;
     tokio::pin!(restream_command_future);
     loop {
         tokio::select! {
             restream_exit_code = &mut restream_command_future => {
                 error!("restream command exited with code {}", restream_exit_code.context("could not execute restream command")?);
-                // TODO: get output message from stdout receiver
+
+                let restream_output = receive_output(&mut restream_command_stdout).await?;
+                error!("stdout+stderr: (next line)\n\n{}\n", restream_output);
             },
         }
     }
 
     Ok(())
+}
+
+async fn receive_output(stdout: &mut Receiver<Vec<u8>>) -> Result<String, Error> {
+    let mut buf = vec![];
+    while let Some(mut data) = stdout.recv().await {
+        buf.append(&mut data);
+    }
+    return Ok(String::from_utf8_lossy(&buf).to_string());
 }
 
 async fn connect_ssh() -> Result<Client, Error> {
@@ -52,7 +62,7 @@ async fn connect_ssh() -> Result<Client, Error> {
 }
 
 async fn start_server(client: &Client) -> Result<(impl Future<Output = Result<u32, async_ssh2_tokio::Error>>, Receiver<Vec<u8>>), Error> {
-    let (stdout_tx, mut stdout_rx) = mpsc::channel(10);
+    let (stdout_tx, stdout_rx) = mpsc::channel(10);
 
     let restream_command = Box::leak(Box::new(format!(
         "./restream --height {} --width {} --bytes-per-pixel {} --file {} --skip {} --listen {}",
