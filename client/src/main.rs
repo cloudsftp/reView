@@ -3,10 +3,12 @@ use std::{thread::sleep, time::Duration};
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
 use tokio::{
-    net::TcpStream,
-    sync::mpsc::{self, Receiver},
+    io::AsyncReadExt as _, net::TcpStream, sync::mpsc::{self, Receiver}
 };
 use tracing::{debug, error, info};
+
+use gstreamer::prelude::*;
+use gstreamer_video::prelude::*;
 
 const IP: &str = "192.168.2.118";
 const SSH_PORT: u16 = 22;
@@ -19,6 +21,8 @@ const BYTES_PER_PIXEL: usize = 4;
 const FILE: &str = ":mem:";
 const SKIP_OFFSET: usize = 2629636;
 
+const APP_SOURCE_NAME: &str = "binsource";
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt::init();
@@ -26,7 +30,7 @@ async fn main() -> Result<(), Error> {
     let client = connect_ssh().await?;
     let (restream_command_future, mut restream_command_stdout) = start_server(&client).await?;
 
-    let tcp_task = tokio::spawn(tcp_stream());
+    let mut tcp_task = tokio::spawn(gstreamer_thread());
 
     tokio::pin!(restream_command_future);
     loop {
@@ -37,20 +41,49 @@ async fn main() -> Result<(), Error> {
                 let restream_output = receive_output(&mut restream_command_stdout).await?;
                 error!("stdout+stderr: (next line)\n\n{}\n", restream_output);
             },
+            gstreamer_result = &mut tcp_task => {
+                error!("gstreamer exited with result: {:?}", gstreamer_result);
+            }
         }
     }
 }
 
-async fn tcp_stream() -> Result<(), Error> {
+async fn gstreamer_thread() -> Result<(), Error> {
+    gstreamer::init().context("could not init gstreamer")?;
+
+    sleep(Duration::from_millis(100));
+
     info!("setting up TCP connection");
-    sleep(Duration::from_secs(1));
-    let mut video_stream = TcpStream::connect(format!("{}:{}", IP, PORT))
+    let mut tcp_input_stream = TcpStream::connect(format!("{}:{}", IP, PORT))
         .await
         .context("could not connect to TCP stream")?;
 
+
+    // TODO: rewrite in bindings?
+    let pipeline = gstreamer::parse::launch(&format!(
+        "appsrc name={} is-live=true format=time ! rawvideoparse width={} height={} format={} ! videoconvert ! autovideosink",
+        APP_SOURCE_NAME, WIDTH, HEIGHT, PIXEL_FORMAT, 
+    )).context("could not build gstreamer pipeline")?;
+
+    let pipeline = pipeline.dynamic_cast::<gstreamer::Pipeline>().unwrap();
+    let app_source = pipeline.by_name(APP_SOURCE_NAME).unwrap()
+        .dynamic_cast::<gstreamer_app::AppSrc>().unwrap(); // TODO: don't depend on dyanamic cast
+
+    pipeline.set_state(gstreamer::State::Playing).unwrap();
+
+    let mut chunk = vec![0u8; BYTES_PER_PIXEL * HEIGHT * WIDTH];
+
+    // TODO: tokio::select! for the love of god
     loop {
-        sleep(Duration::from_secs(1));
+        if tcp_input_stream.read_exact(&mut chunk).await.is_ok() {
+            let buffer = gstreamer::Buffer::from_mut_slice(chunk.clone());
+            let _ = app_source.push_buffer(buffer);
+        } else {
+            break; 
+        }
     }
+
+    Ok(())
 }
 
 async fn receive_output(stdout: &mut Receiver<Vec<u8>>) -> Result<String, Error> {

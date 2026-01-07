@@ -16,3 +16,6 @@ tokio = { version = "1.49.0", features = ["full"] }
 itertools = "0.14.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["tracing"] }
+gstreamer = { version = "0.24.4", features = ["log"] }
+gstreamer-video = "0.24.4"
+gstreamer-app = "0.24.4"
