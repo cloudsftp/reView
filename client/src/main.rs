@@ -5,11 +5,10 @@ use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
 use gstreamer_app::AppSrc;
 use lz4_flex::frame::FrameDecoder;
 use tokio::sync::mpsc::{self, Receiver};
-use tokio_util::io::SyncIoBridge;
 use tracing::{debug, error, info};
 
 use gstreamer::{Pipeline, prelude::*};
-use gstreamer_video::{VideoFormat, prelude::*};
+use gstreamer_video::{VideoFormat};
 
 const IP: &str = "192.168.2.118";
 const SSH_PORT: u16 = 22;
@@ -18,7 +17,7 @@ const PORT: u16 = 6680;
 const HEIGHT: u32 = 1872;
 const WIDTH: u32 = 1404;
 const PIXEL_FORMAT: &str = "bgra";
-const VIDEO_FORMAT: VideoFormat = VideoFormat::Bgrx;
+const VIDEO_FORMAT: VideoFormat = VideoFormat::Bgra;
 const BYTES_PER_PIXEL: u32 = 4;
 const FILE: &str = ":mem:";
 const SKIP_OFFSET: usize = 2629636;
