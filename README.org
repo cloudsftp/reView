@@ -2,6 +2,26 @@
 
 Based on [[https://github.com/rien/reStream][reStream]]
 
+* Dependencies
+
+You need
+
+- =gstreamer=
+- =gstreamer-plugins-base=
+- =gstreamer-plugins-good=
+
+** Ubuntu
+
+#+begin_src shell
+sudo apt install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+#+end_src
+
+** openSUSE
+
+#+begin_src shell
+sudo zypper install gstreamer gstreamer-plugins-base gstreamer-plugins-good
+#+end_src
+
 * Building Server
 
 TODO
