@@ -1,10 +1,12 @@
-use std::{thread::sleep, time::Duration};
+use std::{io::Read as _, net::TcpStream, thread::sleep, time::Duration};
 
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
+use lz4_flex::frame::FrameDecoder;
 use tokio::{
-    io::AsyncReadExt as _, net::TcpStream, sync::mpsc::{self, Receiver}
+    sync::mpsc::{self, Receiver},
 };
+use tokio_util::io::SyncIoBridge;
 use tracing::{debug, error, info};
 
 use gstreamer::prelude::*;
@@ -54,36 +56,34 @@ async fn gstreamer_thread() -> Result<(), Error> {
     sleep(Duration::from_millis(100));
 
     info!("setting up TCP connection");
-    let mut tcp_input_stream = TcpStream::connect(format!("{}:{}", IP, PORT))
-        .await
+    let tcp_input_stream = TcpStream::connect(format!("{}:{}", IP, PORT))
         .context("could not connect to TCP stream")?;
 
+    let mut decoder = FrameDecoder::new(tcp_input_stream);
 
     // TODO: rewrite in bindings?
     let pipeline = gstreamer::parse::launch(&format!(
         "appsrc name={} is-live=true format=time ! rawvideoparse width={} height={} format={} ! videoconvert ! autovideosink",
-        APP_SOURCE_NAME, WIDTH, HEIGHT, PIXEL_FORMAT, 
+        APP_SOURCE_NAME, WIDTH, HEIGHT, PIXEL_FORMAT,
     )).context("could not build gstreamer pipeline")?;
 
     let pipeline = pipeline.dynamic_cast::<gstreamer::Pipeline>().unwrap();
-    let app_source = pipeline.by_name(APP_SOURCE_NAME).unwrap()
-        .dynamic_cast::<gstreamer_app::AppSrc>().unwrap(); // TODO: don't depend on dyanamic cast
+    let app_source = pipeline
+        .by_name(APP_SOURCE_NAME)
+        .unwrap()
+        .dynamic_cast::<gstreamer_app::AppSrc>()
+        .unwrap(); // TODO: don't depend on dyanamic cast
 
     pipeline.set_state(gstreamer::State::Playing).unwrap();
 
     let mut chunk = vec![0u8; BYTES_PER_PIXEL * HEIGHT * WIDTH];
 
-    // TODO: tokio::select! for the love of god
     loop {
-        if tcp_input_stream.read_exact(&mut chunk).await.is_ok() {
-            let buffer = gstreamer::Buffer::from_mut_slice(chunk.clone());
-            let _ = app_source.push_buffer(buffer);
-        } else {
-            break; 
-        }
-    }
+        decoder.read_exact(&mut chunk).context("could not read from TCP stream")?;
 
-    Ok(())
+        let buffer = gstreamer::Buffer::from_mut_slice(chunk.clone());
+        app_source.push_buffer(buffer).context("could not push buffer to app source")?;
+    }
 }
 
 async fn receive_output(stdout: &mut Receiver<Vec<u8>>) -> Result<String, Error> {
