@@ -8,7 +8,7 @@ use tokio::sync::mpsc::{self, Receiver};
 use tracing::{debug, error, info};
 
 use gstreamer::{Pipeline, prelude::*};
-use gstreamer_video::{VideoFormat};
+use gstreamer_video::VideoFormat;
 
 const IP: &str = "192.168.2.118";
 const SSH_PORT: u16 = 22;
@@ -61,7 +61,9 @@ async fn gstreamer_thread() -> Result<(), Error> {
     let mut decoded_video_data = FrameDecoder::new(encoded_video_data);
 
     let (pipeline, appsrc) = build_pipeline().context("could not build gstreamer pipeline")?;
-    pipeline.set_state(gstreamer::State::Playing).context("could not start playing gstreamer pipeline")?;
+    pipeline
+        .set_state(gstreamer::State::Playing)
+        .context("could not start playing gstreamer pipeline")?;
 
     let mut chunk = vec![0u8; (BYTES_PER_PIXEL * HEIGHT * WIDTH) as usize];
     loop {
