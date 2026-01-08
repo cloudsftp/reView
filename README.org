@@ -6,9 +6,9 @@ Based on [[https://github.com/rien/reStream][reStream]]
 
 You need
 
-- =gstreamer=
-- =gstreamer-plugins-base=
-- =gstreamer-plugins-good=
+- Gstreamer
+- Gstreamer Plugins Base
+- Gstreamer Plugins Good
 
 ** Ubuntu
 
@@ -22,7 +22,16 @@ sudo apt install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugin
 sudo zypper install gstreamer gstreamer-plugins-base gstreamer-plugins-good
 #+end_src
 
-* Building Server
+* Building
+
+** Client
+
+Just build it
+
+#+begin_src shell
+cargo build --release
+#+end_src
+
+** Server
 
 TODO
-
