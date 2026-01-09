@@ -10,7 +10,7 @@ use tracing::{debug, error, info};
 use gstreamer::{Pipeline, prelude::*};
 use gstreamer_video::VideoFormat;
 
-const IP: &str = "192.168.2.118";
+const IP: &str = "192.168.0.105";
 const SSH_PORT: u16 = 22;
 const PORT: u16 = 6680;
 
