@@ -1,6 +1,6 @@
 use gstreamer_video::VideoFormat;
 
-pub const IP: &str = "192.168.2.118";
+pub const DEFAULT_IP: &str = "10.11.99.1";
 pub const SSH_PORT: u16 = 22;
 pub const PORT: u16 = 6680;
 

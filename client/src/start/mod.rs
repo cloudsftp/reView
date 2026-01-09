@@ -1,17 +1,22 @@
 use super::config::*;
 
+use std::path::PathBuf;
+
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
 use tokio::sync::mpsc::{self, Receiver};
 use tracing::{debug, info};
 
-pub async fn connect_ssh() -> Result<Client, Error> {
+pub async fn connect_ssh(
+    key_file_path: PathBuf,
+    remarkable_ip: Option<String>,
+) -> Result<Client, Error> {
     info!("connecting to reMarkable");
     Client::connect(
-        (IP, SSH_PORT),
+        (remarkable_ip.unwrap_or(DEFAULT_IP.into()), SSH_PORT),
         "root",
         AuthMethod::PrivateKeyFile {
-            key_file_path: "/home/fabi/.ssh/id_ed25519".into(),
+            key_file_path,
             key_pass: None,
         },
         ServerCheckMethod::NoCheck,

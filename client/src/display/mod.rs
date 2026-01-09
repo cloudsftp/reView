@@ -9,14 +9,18 @@ use tracing::info;
 
 use gstreamer::{Pipeline, prelude::*};
 
-pub async fn gstreamer_thread() -> Result<(), Error> {
+pub async fn gstreamer_thread(remarkable_ip: Option<String>) -> Result<(), Error> {
     gstreamer::init().context("could not init gstreamer")?;
 
     sleep(Duration::from_millis(100));
 
     info!("setting up TCP connection");
-    let encoded_video_data = TcpStream::connect(format!("{}:{}", IP, PORT))
-        .context("could not connect to TCP stream")?;
+    let encoded_video_data = TcpStream::connect(format!(
+        "{}:{}",
+        remarkable_ip.unwrap_or(DEFAULT_IP.into()),
+        PORT
+    ))
+    .context("could not connect to TCP stream")?;
 
     let mut decoded_video_data = FrameDecoder::new(encoded_video_data);
 

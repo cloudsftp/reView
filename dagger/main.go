@@ -36,28 +36,38 @@ func (m *ReView) BuildClient(source *dagger.Directory) *dagger.File {
 			"cargo", "build", "--release",
 			"--bin", "review-client",
 		}).
-		File("target/release/review-client")
+		WithExec([]string{"cp", "target/release/review-client", "review-client"}).
+		File("review-client")
 }
 
 func linuxContainer(source *dagger.Directory) *dagger.Container {
 	return dag.Container().
 		From("rust:"+RustVersion+"-trixie").
-		WithDirectory("/source", source).
-		WithWorkdir("/source").
 		WithExec([]string{"apt", "update"}).
 		WithExec([]string{
 			"apt", "install", "-y",
 			"libgstreamer1.0-dev",
 			"libgstreamer-plugins-base1.0-dev",
-		})
+		}).
+		WithDirectory("/source", source).
+		WithWorkdir("/source").
+
+		// Cache
+		WithMountedCache("/cache/cargo", dag.CacheVolume("rust-packages")).
+		WithEnvVariable("CARGO_HOME", "/cache/cargo").
+		WithMountedCache("target", dag.CacheVolume("rust-target"))
 }
 
 func (m *ReView) BuildServer(source *dagger.Directory) *dagger.File {
-	return toltecContainer(source).WithExec([]string{
-		"cargo", "build", "--release",
-		"--bin", "review-server",
-		"--target", RemarkableTarget,
-	}).File("target/" + RemarkableTarget + "/release/review-server")
+	return toltecContainer(source).
+		WithExec([]string{
+			"cargo", "build", "--release",
+			"--bin", "review-server",
+			"--target", RemarkableTarget,
+		}).
+		// WithExec([]string{"cp", "target/" + RemarkableTarget + "/release/review-server", "review-server"}).
+		// File("review-server")
+		File("target/" + RemarkableTarget + "/release/review-server")
 }
 
 func toltecContainer(source *dagger.Directory) *dagger.Container {
@@ -65,4 +75,9 @@ func toltecContainer(source *dagger.Directory) *dagger.Container {
 		From(ToltecImage+":"+ToltecVersion).
 		WithDirectory("/source", source).
 		WithWorkdir("/source")
+
+	// Cache
+	// WithMountedCache("/cache/cargo", dag.CacheVolume("rust-packages-toltec")).
+	// WithEnvVariable("CARGO_HOME", "/cache/cargo").
+	// WithMountedCache("target", dag.CacheVolume("rust-target-toltec"))
 }

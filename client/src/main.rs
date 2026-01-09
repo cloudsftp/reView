@@ -2,7 +2,10 @@ mod config;
 mod display;
 mod start;
 
+use std::path::PathBuf;
+
 use anyhow::{Context, Error};
+use clap::Parser;
 use start::{connect_ssh, receive_output, start_server};
 use tracing::error;
 
@@ -10,16 +13,30 @@ use display::gstreamer_thread;
 use gstreamer::{Pipeline, prelude::*};
 use gstreamer_video::VideoFormat;
 
+#[derive(Parser, Debug)]
+#[command(author, version)]
+pub struct Opts {
+    /// reMarkable IP
+    #[arg(long, name = "remarkable-ip", short = 's')]
+    remarkable_ip: Option<String>,
+
+    /// private SSH key file path
+    #[arg(long, name = "ssh-key", short = 'k')]
+    ssh_key: PathBuf,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt::init();
 
-    let client = connect_ssh()
+    let opts: Opts = Opts::parse();
+
+    let client = connect_ssh(opts.ssh_key, opts.remarkable_ip.clone())
         .await
         .context("could not connect to reMarkable")?;
     let (restream_command_future, mut restream_command_stdout) = start_server(&client).await?;
 
-    let mut tcp_task = tokio::spawn(gstreamer_thread());
+    let mut tcp_task = tokio::spawn(gstreamer_thread(opts.remarkable_ip));
 
     tokio::pin!(restream_command_future);
     loop {
