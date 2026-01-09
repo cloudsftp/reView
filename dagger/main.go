@@ -15,23 +15,54 @@
 package main
 
 import (
-	"context"
+	//	"context"
 	"dagger/re-view/internal/dagger"
+)
+
+const (
+	RustVersion = "1.91"
+
+	ToltecImage   = "ghcr.io/toltec-dev/rust"
+	ToltecVersion = "v4.0"
+
+	RemarkableTarget = "armv7-unknown-linux-gnueabihf"
 )
 
 type ReView struct{}
 
-// Returns a container that echoes whatever string argument is provided
-func (m *ReView) ContainerEcho(stringArg string) *dagger.Container {
-	return dag.Container().From("alpine:latest").WithExec([]string{"echo", stringArg})
+func (m *ReView) BuildClient(source *dagger.Directory) *dagger.File {
+	return linuxContainer(source).
+		WithExec([]string{
+			"cargo", "build", "--release",
+			"--bin", "review-client",
+		}).
+		File("target/release/review-client")
 }
 
-// Returns lines that match a pattern in the files of the provided Directory
-func (m *ReView) GrepDir(ctx context.Context, directoryArg *dagger.Directory, pattern string) (string, error) {
+func linuxContainer(source *dagger.Directory) *dagger.Container {
 	return dag.Container().
-		From("alpine:latest").
-		WithMountedDirectory("/mnt", directoryArg).
-		WithWorkdir("/mnt").
-		WithExec([]string{"grep", "-R", pattern, "."}).
-		Stdout(ctx)
+		From("rust:"+RustVersion+"-trixie").
+		WithDirectory("/source", source).
+		WithWorkdir("/source").
+		WithExec([]string{"apt", "update"}).
+		WithExec([]string{
+			"apt", "install", "-y",
+			"libgstreamer1.0-dev",
+			"libgstreamer-plugins-base1.0-dev",
+		})
+}
+
+func (m *ReView) BuildServer(source *dagger.Directory) *dagger.File {
+	return toltecContainer(source).WithExec([]string{
+		"cargo", "build", "--release",
+		"--bin", "review-server",
+		"--target", RemarkableTarget,
+	}).File("target/" + RemarkableTarget + "/release/review-server")
+}
+
+func toltecContainer(source *dagger.Directory) *dagger.Container {
+	return dag.Container().
+		From(ToltecImage+":"+ToltecVersion).
+		WithDirectory("/source", source).
+		WithWorkdir("/source")
 }

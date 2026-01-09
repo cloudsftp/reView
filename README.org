@@ -32,6 +32,16 @@ Just build it
 cargo build --release
 #+end_src
 
+Or with [[https://dagger.io/][dagger]]
+
+#+begin_src shell
+dagger call build-client --source . export --path review-client
+#+end_src
+
 ** Server
 
-TODO
+With [[https://dagger.io/][dagger]]
+
+#+begin_src shell
+dagger call build-server --source . export --path review-server.arm.static
+#+end_src
