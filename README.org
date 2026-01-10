@@ -62,7 +62,7 @@ Corresponding keys:
 Just build it
 
 #+begin_src shell
-cargo build --release
+cargo build --release --bin review-client
 #+end_src
 
 Or with [[https://dagger.io/][dagger]]
@@ -78,3 +78,14 @@ With [[https://dagger.io/][dagger]]
 #+begin_src shell
 dagger call build-server --source . export --path review-server.arm.static
 #+end_src
+
+* Development
+
+** Additional Dependencies
+
+*** openSUSE
+
+#+begin_src shell
+sudo zypper in gstreamer-devel gstreamer-plugins-base-devel
+#+end_src
+
