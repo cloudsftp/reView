@@ -1,0 +1,32 @@
+name: Build
+
+on: [push]
+
+jobs:
+  build-client:
+    name: Build Client
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Client
+        uses: dagger/dagger-for-github@v8
+        with:
+          version: "latest"
+          verb: call
+          args: build-client --source=.
+
+  build-server:
+    name: Build Client
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Client
+        uses: dagger/dagger-for-github@v8
+        with:
+          version: "latest"
+          verb: call
+          args: build-server --source=.
