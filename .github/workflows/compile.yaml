@@ -1,0 +1,32 @@
+name: Build
+
+on: [push]
+
+jobs:
+  check-and-test:
+    name: Check and Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check and Test
+        uses: dagger/dagger-for-github@v8.2.0
+        with:
+          version: "latest"
+          verb: call
+          args: check-and-test-all --source=.
+
+  build-server:
+    name: Build Server
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Server
+        uses: dagger/dagger-for-github@v8.2.0
+        with:
+          version: "latest"
+          verb: call
+          args: build-server --source=.

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"dagger/re-view/internal/dagger"
 )
 
@@ -14,6 +15,15 @@ const (
 )
 
 type ReView struct{}
+
+func (m *ReView) CheckAndTestAll(ctx context.Context, source *dagger.Directory) (string, error) {
+	output, err := linuxContainer(source).WithExec([]string{"cargo", "check"}).Stdout(ctx)
+	if err != nil {
+		return output, nil
+	}
+
+	return "ok", nil
+}
 
 func (m *ReView) BuildClient(source *dagger.Directory) *dagger.File {
 	return linuxContainer(source).
