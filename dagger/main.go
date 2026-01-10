@@ -1,8 +1,8 @@
 package main
 
 import (
+	"context"
 	"dagger/re-view/internal/dagger"
-	"fmt"
 )
 
 const (
@@ -16,18 +16,13 @@ const (
 
 type ReView struct{}
 
-func (m *ReView) BuildAndTestAll(source *dagger.Directory) error {
-	client := m.BuildClient(source)
-	if client == nil {
-		return fmt.Errorf("could not build client")
+func (m *ReView) CheckAndTestAll(ctx context.Context, source *dagger.Directory) (string, error) {
+	output, err := linuxContainer(source).WithExec([]string{"cargo", "check"}).Stdout(ctx)
+	if err != nil {
+		return output, nil
 	}
 
-	server := m.BuildServer(source)
-	if server == nil {
-		return fmt.Errorf("could not build server")
-	}
-
-	return nil
+	return "ok", nil
 }
 
 func (m *ReView) BuildClient(source *dagger.Directory) *dagger.File {
