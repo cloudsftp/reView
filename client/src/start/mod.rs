@@ -1,22 +1,17 @@
 use super::config::*;
 
-use std::path::PathBuf;
-
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
 use tokio::sync::mpsc::{self, Receiver};
 use tracing::{debug, info};
 
-pub async fn connect_ssh(
-    key_file_path: PathBuf,
-    remarkable_ip: Option<String>,
-) -> Result<Client, Error> {
+pub async fn connect_ssh(opts: ClientOptions) -> Result<Client, Error> {
     info!("connecting to reMarkable");
     Client::connect(
-        (remarkable_ip.unwrap_or(DEFAULT_IP.into()), SSH_PORT),
+        (opts.remarkable_ip.clone(), opts.ssh_port),
         "root",
         AuthMethod::PrivateKeyFile {
-            key_file_path,
+            key_file_path: opts.ssh_key.clone(),
             key_pass: None,
         },
         ServerCheckMethod::NoCheck,
@@ -27,6 +22,7 @@ pub async fn connect_ssh(
 
 pub async fn start_server(
     client: &Client,
+    opts: ClientOptions,
 ) -> Result<
     (
         impl Future<Output = Result<u32, async_ssh2_tokio::Error>>,
@@ -38,7 +34,7 @@ pub async fn start_server(
 
     let restream_command = Box::leak(Box::new(format!(
         "./restream --height {} --width {} --bytes-per-pixel {} --file {} --skip {} --listen {}",
-        HEIGHT, WIDTH, BYTES_PER_PIXEL, FILE, SKIP_OFFSET, PORT,
+        HEIGHT, WIDTH, BYTES_PER_PIXEL, FILE, SKIP_OFFSET, opts.tcp_port,
     )));
 
     debug!("spawning restream");
