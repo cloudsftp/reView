@@ -22,6 +22,39 @@ sudo apt install libgstreamer1.0-0 gstreamer1.0-plugins-base gstreamer1.0-plugin
 sudo zypper install gstreamer gstreamer-plugins-base gstreamer-plugins-good
 #+end_src
 
+* Usage
+
+** Client
+
+Options for the client can be set as command line options or environment variables.
+Command line options override the environment variables.
+
+Values with no default value in their description have to be set (for example =--ssh-key=).
+
+*** Command Line Options
+
+#+begin_src
+Usage: review-client [OPTIONS]
+
+Options:
+      --remarkable-ip <remarkable-ip>  IP of the reMarkable tablet (default: 10.11.99.1)
+      --ssh-port <ssh-port>            SSH Port used by the reMarkable tablet (default: 22)
+      --ssh-key <ssh-key>              Private SSH key file path
+      --tcp-port <tcp-port>            TCP port for video stream (default: 6680)
+      --dark-mode                      Dark mode - invert colors (default: false)
+  -h, --help                           Print help
+  -V, --version                        Print version
+#+end_src
+
+*** Environment Variables
+
+Corresponding keys:
+- =REMARKABLE_IP=
+- =REMARKABLE_SSH_PORT=
+- =REMARKABLE_SSH_KEY_PATH=
+- =REMARKABLE_TCP_PORT=
+- =REMARKABLE_DARK_MODE=
+
 * Building
 
 ** Client
@@ -29,7 +62,7 @@ sudo zypper install gstreamer gstreamer-plugins-base gstreamer-plugins-good
 Just build it
 
 #+begin_src shell
-cargo build --release
+cargo build --release --bin review-client
 #+end_src
 
 Or with [[https://dagger.io/][dagger]]
@@ -45,3 +78,14 @@ With [[https://dagger.io/][dagger]]
 #+begin_src shell
 dagger call build-server --source . export --path review-server.arm.static
 #+end_src
+
+* Development
+
+** Additional Dependencies
+
+*** openSUSE
+
+#+begin_src shell
+sudo zypper in gstreamer-devel gstreamer-plugins-base-devel
+#+end_src
+
