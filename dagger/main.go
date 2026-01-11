@@ -17,10 +17,19 @@ const (
 type ReView struct{}
 
 func (m *ReView) CheckAndTestAll(ctx context.Context, source *dagger.Directory) (string, error) {
-	output, err := linuxContainer(source).WithExec([]string{"cargo", "check"}).Stdout(ctx)
+	output := ""
+
+	o, err := linuxContainer(source).WithExec([]string{"cargo", "check"}).Stdout(ctx)
 	if err != nil {
-		return output, nil
+		return o, err
 	}
+	output = output + "\n\n" + o
+
+	o, err = linuxContainer(source).WithExec([]string{"cargo", "test"}).Stdout(ctx)
+	if err != nil {
+		return o, err
+	}
+	output = output + "\n\n" + o
 
 	return "ok", nil
 }
