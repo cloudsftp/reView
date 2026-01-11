@@ -40,7 +40,7 @@ impl PartialOrd for FirmwareVersion {
     }
 }
 
-pub fn get_version() -> Result<(FirmwareVersion, ConfigVersion), Error> {
+pub fn get_firmware_version() -> Result<(FirmwareVersion, ConfigVersion), Error> {
     let content = fs::read_to_string("/usr/share/remarkable/update.conf")
         .context("could not read framebuffer version file")?;
     let content = content.trim();
@@ -110,4 +110,32 @@ fn parse_version(input: &str) -> Result<FirmwareVersion, Error> {
         minor: version_parts[2],
         patch: version_parts[3],
     })
+}
+
+#[derive(Debug)]
+pub enum HardwareVersion {
+    Rm1,
+    Rm2,
+    Ferrari,
+}
+
+pub fn get_hardware_version() -> Result<HardwareVersion, Error> {
+    let content = fs::read_to_string("/sys/devices/soc0/machine")
+        .context("could not read framebuffer version file")?;
+    let content = content.trim();
+
+    parse_hardware_version(&content).context("could not parse hardware version")
+}
+
+fn parse_hardware_version(input: &str) -> Result<HardwareVersion, Error> {
+    let (_, version_string) = input
+        .split_once(' ')
+        .context(format!("could not split input '{}'", input))?;
+
+    match version_string {
+        "1.0" => Ok(HardwareVersion::Rm1),
+        "2.0" => Ok(HardwareVersion::Rm2),
+        "Ferrari" => Ok(HardwareVersion::Ferrari),
+        version_string => Err(anyhow!("unknown version string '{}'", version_string)),
+    }
 }
