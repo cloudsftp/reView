@@ -1,9 +1,11 @@
 #[cfg(test)]
 mod tests;
 
-use std::fs;
+use core::fmt;
+use std::{ffi::os_str::Display, fs};
 
 use anyhow::{Context, Error, Result, anyhow};
+use serde::Serializer;
 use tracing::trace;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -40,16 +42,21 @@ impl PartialOrd for FirmwareVersion {
     }
 }
 
-pub fn get_firmware_version() -> Result<(FirmwareVersion, ConfigVersion), Error> {
+impl fmt::Display for FirmwareVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "{}.{}.{}.{}",
+            self.version, self.major, self.minor, self.patch
+        ))
+    }
+}
+
+pub fn get_firmware_version() -> Result<FirmwareVersion, Error> {
     let content = fs::read_to_string("/usr/share/remarkable/update.conf")
         .context("could not read framebuffer version file")?;
     let content = content.trim();
 
-    let firmware_version = parse_version(&content).context("could not parse version")?;
-    let config_version =
-        get_config_version(&firmware_version).context("could not get config version")?;
-
-    Ok((firmware_version, config_version))
+    parse_version(&content).context("could not parse version")
 }
 
 const VERSION_3_0: FirmwareVersion = FirmwareVersion {
@@ -71,7 +78,7 @@ const VERSION_3_24: FirmwareVersion = FirmwareVersion {
     patch: 0,
 };
 
-fn get_config_version(version: &FirmwareVersion) -> Result<ConfigVersion, Error> {
+pub fn get_config_version(version: &FirmwareVersion) -> Result<ConfigVersion, Error> {
     Ok(if version >= &VERSION_3_24 {
         ConfigVersion::V3P24
     } else if version >= &VERSION_3_7 {
