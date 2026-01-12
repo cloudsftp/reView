@@ -1,9 +1,7 @@
 use std::path::PathBuf;
 
+use crate::version::{ConfigVersion, FirmwareVersion, HardwareVersion, get_config_version};
 use anyhow::{Context, Error, anyhow};
-use version::{ConfigVersion, FirmwareVersion, HardwareVersion, get_config_version};
-
-pub mod version;
 
 #[derive(Debug)]
 pub enum VideoDataSource {

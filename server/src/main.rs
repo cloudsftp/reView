@@ -1,11 +1,10 @@
 pub mod config;
+pub mod version;
 
 use anyhow::{Context, Error};
-use config::{
-    get_video_config,
-    version::{get_firmware_version, get_hardware_version},
-};
+use config::get_video_config;
 use tracing::info;
+use version::{get_firmware_version, get_hardware_version};
 
 fn main() -> Result<(), Error> {
     tracing_subscriber::fmt::init();
