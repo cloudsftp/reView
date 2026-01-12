@@ -12,7 +12,7 @@ pub struct CliOptions {
     payload: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ServerOptions {
     pub port: u16,
     pub show_cursor: bool,
@@ -27,13 +27,13 @@ impl TryFrom<CliOptions> for ServerOptions {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum VideoDataSource {
     File { path: PathBuf },
     Memory,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PixelFormat {
     Rgb565le,
     Gray8,
@@ -41,13 +41,13 @@ pub enum PixelFormat {
     Bgra,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InternalVideoConfig {
     pub source: VideoDataSource,
     pub skip: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SharedVideoConfig {
     pub height: usize,
     pub width: usize,
@@ -55,10 +55,22 @@ pub struct SharedVideoConfig {
     pub pixel_format: PixelFormat,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct VideoConfig {
     pub internal: InternalVideoConfig,
     pub shared: SharedVideoConfig,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VersionInfo {
+    pub hardware: HardwareVersion,
+    pub firmware: FirmwareVersion,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommunicatedConfig {
+    pub version: VersionInfo,
+    pub video_config: SharedVideoConfig,
 }
 
 pub fn get_video_config(

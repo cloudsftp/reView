@@ -2,10 +2,10 @@
 mod tests;
 
 use core::fmt;
-use std::{ffi::os_str::Display, fs};
+use std::fs;
 
 use anyhow::{Context, Error, Result, anyhow};
-use serde::Serializer;
+use serde::{Deserialize, Serialize};
 use tracing::trace;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -16,7 +16,7 @@ pub enum ConfigVersion {
     V3P24,
 }
 
-#[derive(Debug, PartialEq, Eq, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, Ord, Serialize, Deserialize)]
 pub struct FirmwareVersion {
     version: usize,
     major: usize,
@@ -119,7 +119,7 @@ fn parse_version(input: &str) -> Result<FirmwareVersion, Error> {
     })
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum HardwareVersion {
     Rm1,
     Rm2,

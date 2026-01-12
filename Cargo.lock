@@ -2097,10 +2097,13 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "futures",
  "libremarkable",
  "serde",
  "serde_json",
  "test-log",
+ "tokio",
+ "tokio-util",
  "tracing",
  "tracing-subscriber",
 ]
