@@ -2082,6 +2082,7 @@ dependencies = [
  "gstreamer-video",
  "itertools",
  "lz4_flex",
+ "review-server",
  "serde",
  "serde_json",
  "tokio",

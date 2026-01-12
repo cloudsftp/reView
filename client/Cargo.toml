@@ -20,3 +20,4 @@ gstreamer-video = "0.24.4"
 gstreamer-app = "0.24.4"
 lz4_flex = "0.12.0"
 tokio-util = { version = "0.7.18", features = ["io", "io-util"] }
+review-server = { path = "../server" }

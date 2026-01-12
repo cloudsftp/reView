@@ -2,6 +2,30 @@ use std::path::PathBuf;
 
 use crate::version::{ConfigVersion, FirmwareVersion, HardwareVersion, get_config_version};
 use anyhow::{Context, Error, anyhow};
+use clap::Parser;
+use serde::{Deserialize, Serialize};
+
+#[derive(Parser, Debug)]
+#[command(author, version)]
+pub struct CliOptions {
+    /// JSON object containing the server configuration
+    payload: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ServerOptions {
+    pub port: u16,
+    pub show_cursor: bool,
+}
+
+impl TryFrom<CliOptions> for ServerOptions {
+    type Error = Error;
+
+    fn try_from(value: CliOptions) -> Result<Self, Error> {
+        serde_json::from_str(&value.payload)
+            .context("could not parse JSON payload for server options")
+    }
+}
 
 #[derive(Debug)]
 pub enum VideoDataSource {
