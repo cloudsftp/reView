@@ -29,14 +29,17 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
 
     debug!("received communicated config: {:?}", &communicated_config);
 
-    // let mut decoded_video_data = FrameDecoder::new(tcp_stream);
+    let stream = stream
+        .into_std()
+        .context("could not convert stream into std")?;
+
+    let mut decoded_video_data = FrameDecoder::new(stream);
 
     let (pipeline, appsrc) = build_pipeline().context("could not build gstreamer pipeline")?;
     pipeline
         .set_state(gstreamer::State::Playing)
         .context("could not start playing gstreamer pipeline")?;
 
-    /*
     let mut chunk = vec![0u8; (BYTES_PER_PIXEL * HEIGHT * WIDTH) as usize];
     loop {
         decoded_video_data
@@ -48,9 +51,6 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
             .push_buffer(buffer)
             .context("could not push buffer to app source")?;
     }
-    */
-
-    Ok(())
 }
 
 async fn get_communicated_config(
