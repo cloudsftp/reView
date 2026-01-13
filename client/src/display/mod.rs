@@ -1,15 +1,17 @@
 use super::config::*;
 
-use std::{io::Read as _, net::TcpStream, thread::sleep, time::Duration};
+use std::{io::Read as _, thread::sleep, time::Duration};
 
 use anyhow::{Context, Error};
+use futures::stream::StreamExt;
 use gstreamer_app::AppSrc;
 use lz4_flex::frame::FrameDecoder;
-use tracing::info;
+use review_server::config::CommunicatedConfig;
+use tokio::net::TcpStream;
+use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use tracing::{debug, info};
 
 use gstreamer::{Pipeline, prelude::*};
-
-pub const APP_SOURCE_NAME: &str = "binsource";
 
 pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
     gstreamer::init().context("could not init gstreamer")?;
@@ -17,17 +19,24 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
     sleep(Duration::from_millis(100));
 
     info!("setting up TCP connection");
-    let encoded_video_data =
-        TcpStream::connect(format!("{}:{}", opts.remarkable_ip, opts.tcp_port))
-            .context("could not connect to TCP stream")?;
+    let stream = TcpStream::connect(format!("{}:{}", opts.remarkable_ip, opts.tcp_port))
+        .await
+        .context("could not connect to TCP stream")?;
 
-    let mut decoded_video_data = FrameDecoder::new(encoded_video_data);
+    let (stream, communicated_config) = get_communicated_config(stream)
+        .await
+        .context("could not get communicated config from TCP stream")?;
+
+    debug!("received communicated config: {:?}", &communicated_config);
+
+    // let mut decoded_video_data = FrameDecoder::new(tcp_stream);
 
     let (pipeline, appsrc) = build_pipeline().context("could not build gstreamer pipeline")?;
     pipeline
         .set_state(gstreamer::State::Playing)
         .context("could not start playing gstreamer pipeline")?;
 
+    /*
     let mut chunk = vec![0u8; (BYTES_PER_PIXEL * HEIGHT * WIDTH) as usize];
     loop {
         decoded_video_data
@@ -39,6 +48,26 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
             .push_buffer(buffer)
             .context("could not push buffer to app source")?;
     }
+    */
+
+    Ok(())
+}
+
+async fn get_communicated_config(
+    tcp_stream: TcpStream,
+) -> Result<(TcpStream, CommunicatedConfig), Error> {
+    let mut framed_stream = Framed::new(tcp_stream, LengthDelimitedCodec::new());
+
+    let config_bytes = framed_stream
+        .next()
+        .await
+        .context("received None as config bytes")?
+        .context("could not receive config bytes")?;
+
+    let config = bson::deserialize_from_slice(&config_bytes)
+        .context("could not deserialize config from bytes")?;
+
+    Ok((framed_stream.into_inner(), config))
 }
 
 fn build_pipeline() -> Result<(Pipeline, AppSrc), Error> {

@@ -45,28 +45,26 @@ async fn main() -> Result<(), Error> {
         let (stream, addr) = listener.accept().await?;
         info!("new connection from {}", addr);
 
-        tokio::spawn(open_connection(
-            stream,
-            opts.clone(),
-            communicated_config.clone(),
-        ));
+        tokio::spawn(open_connection(stream, communicated_config.clone()));
     }
 }
 
 async fn open_connection(
-    mut stream: TcpStream,
-    opts: ServerOptions,
+    stream: TcpStream,
     communicated_config: CommunicatedConfig,
 ) -> Result<(), Error> {
     let mut framed = Framed::new(stream, LengthDelimitedCodec::new());
+
+    let bytes = bson::serialize_to_vec(&communicated_config)
+        .context("could not serialize communicated config")?
+        .into();
+
     framed
-        .send(
-            serde_json::to_string(&communicated_config)
-                .context("could not serialize communicated config")?
-                .into(),
-        )
+        .send(bytes)
         .await
         .context("could not send out config")?;
+
+    let stream = framed.into_inner();
 
     Ok(())
 }
