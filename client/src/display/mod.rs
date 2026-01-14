@@ -47,10 +47,15 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
             .context("could not read from TCP stream")?;
 
         let slice = buffer[..n].to_vec();
+
+        debug!("read {} bytes:\n\n{:?}", n, &slice);
+
         let buffer = gstreamer::Buffer::from_slice(slice);
         appsrc
             .push_buffer(buffer)
             .context("could not push buffer to app source")?;
+
+        sleep(Duration::from_secs_f64(1.));
     }
 }
 

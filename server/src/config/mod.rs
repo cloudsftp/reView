@@ -16,6 +16,7 @@ pub struct CliOptions {
 pub struct ServerOptions {
     pub port: u16,
     pub show_cursor: bool,
+    pub framerate: u8,
 }
 
 impl TryFrom<CliOptions> for ServerOptions {

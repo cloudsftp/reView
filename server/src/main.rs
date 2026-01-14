@@ -61,6 +61,7 @@ async fn main() -> Result<(), Error> {
 
         tokio::spawn(open_connection(
             stream,
+            opts.clone(),
             video_config.clone(),
             communicated_config.clone(),
         ));
@@ -69,6 +70,7 @@ async fn main() -> Result<(), Error> {
 
 async fn open_connection(
     stream: TcpStream,
+    opts: ServerOptions,
     video_config: VideoConfig,
     communicated_config: CommunicatedConfig,
 ) -> Result<(), Error> {
@@ -110,12 +112,11 @@ async fn open_connection(
             .write_all(&buffer)
             .context("could not write frame to encoder")?;
 
-        sleep(Duration::from_secs(1)).await;
-
-        /*
         encoded_video_data
             .flush()
-            .context("failed to flush encoder")?;*/
+            .context("failed to flush encoder")?;
+
+        sleep(Duration::from_secs_f64(1. / (opts.framerate as f64))).await;
     }
 }
 
