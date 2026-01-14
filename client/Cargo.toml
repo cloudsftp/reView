@@ -6,17 +6,21 @@ license = "GPL-3.0"
 edition = "2024"
 
 [dependencies]
+tokio = { version = "1.49.0", features = ["macros", "net", "rt-multi-thread"] }
 async-ssh2-tokio = "0.12.1"
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.148"
 anyhow = "1.0"
-tokio = { version = "1.49.0", features = ["full"] }
 itertools = "0.14.0"
 tracing = "0.1.44"
 tracing-subscriber = { version = "0.3.22", features = ["tracing"] }
+test-log = { version = "0.2.19", features = ["trace"] }
 gstreamer = { version = "0.24.4", features = ["log"] }
 gstreamer-video = "0.24.4"
 gstreamer-app = "0.24.4"
 lz4_flex = "0.12.0"
-tokio-util = { version = "0.7.18", features = ["io", "io-util"] }
+tokio-util = { version = "0.7.18", features = ["io", "io-util", "codec"] }
+review-server = { path = "../server" }
+futures = "0.3.31"
+bson = { version = "3.1.0", features = ["serde"] }

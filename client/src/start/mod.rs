@@ -2,6 +2,7 @@ use super::config::*;
 
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
+use review_server::config::ServerOptions;
 use tokio::sync::mpsc::{self, Receiver};
 use tracing::{debug, info};
 
@@ -32,9 +33,16 @@ pub async fn start_server(
 > {
     let (stdout_tx, stdout_rx) = mpsc::channel(10);
 
+    let server_options = ServerOptions {
+        port: 6680,
+        show_cursor: false,
+        framerate: 10,
+    };
+
     let restream_command = Box::leak(Box::new(format!(
-        "./restream --height {} --width {} --bytes-per-pixel {} --file {} --skip {} --listen {}",
-        HEIGHT, WIDTH, BYTES_PER_PIXEL, FILE, SKIP_OFFSET, opts.tcp_port,
+        "RUST_LOG=trace ./review-server '{}'",
+        serde_json::to_string(&server_options)
+            .context("could not convert server options to json")?,
     )));
 
     debug!("spawning restream");
