@@ -98,8 +98,10 @@ async fn open_connection(
     let mut frame_reader =
         FrameReader::new(video_config).context("could not create frame reader")?;
 
+    /*
     io::copy(&mut frame_reader, &mut encoded_video_data)
         .context("error while copying frame buffer data to stream")?;
+    */
 
     // TODO: this problably can be a simple io::copy
     let mut buffer = vec![0u8; frame_reader.frame_length()];
