@@ -6,7 +6,7 @@ license = "GPL-3.0"
 edition = "2024"
 
 [dependencies]
-tokio = { version = "1.49.0", features = ["macros", "net", "rt-multi-thread"] }
+tokio = { version = "1.49.0", features = ["macros", "net", "rt-multi-thread", "time"] }
 libremarkable = { version = "0.7", features = ["input"], default-features = false }
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1.0.228", features = ["derive"] }
