@@ -3,7 +3,7 @@ mod version;
 
 use std::{
     fs::File,
-    io::{self, Read, Seek, SeekFrom},
+    io::{self, ErrorKind, Read, Seek, SeekFrom, Write},
     time::Duration,
 };
 
@@ -16,7 +16,10 @@ use futures::sink::SinkExt;
 use itertools::Itertools;
 use lz4_flex::frame::FrameEncoder;
 use procfs::process::{MMapPath, all_processes};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::{
+    net::{TcpListener, TcpStream},
+    time::sleep,
+};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use tracing::{debug, info};
 use version::{get_firmware_version, get_hardware_version};
@@ -96,7 +99,24 @@ async fn open_connection(
     io::copy(&mut frame_reader, &mut encoded_video_data)
         .context("error while copying frame buffer data to stream")?;
 
-    Ok(())
+    // TODO: this problably can be a simple io::copy
+    let mut buffer = vec![0u8; frame_reader.frame_length()];
+    loop {
+        frame_reader
+            .read_exact(&mut buffer)
+            .context("error reading frame from file")?;
+
+        encoded_video_data
+            .write_all(&buffer)
+            .context("could not write frame to encoder")?;
+
+        sleep(Duration::from_secs(1)).await;
+
+        /*
+        encoded_video_data
+            .flush()
+            .context("failed to flush encoder")?;*/
+    }
 }
 
 #[derive(Debug)]

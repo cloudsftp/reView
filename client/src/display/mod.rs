@@ -40,13 +40,14 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
         .set_state(gstreamer::State::Playing)
         .context("could not start playing gstreamer pipeline")?;
 
-    let mut chunk = vec![0u8; (BYTES_PER_PIXEL * HEIGHT * WIDTH) as usize];
+    let mut buffer = vec![0u8; (BYTES_PER_PIXEL * HEIGHT * WIDTH) as usize];
     loop {
-        decoded_video_data
-            .read_exact(&mut chunk)
+        let n = decoded_video_data
+            .read(&mut buffer)
             .context("could not read from TCP stream")?;
 
-        let buffer = gstreamer::Buffer::from_mut_slice(chunk.clone());
+        let slice = buffer[..n].to_vec();
+        let buffer = gstreamer::Buffer::from_slice(slice);
         appsrc
             .push_buffer(buffer)
             .context("could not push buffer to app source")?;
