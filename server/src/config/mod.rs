@@ -31,7 +31,7 @@ impl TryFrom<CliOptions> for ServerOptions {
 #[derive(Debug, Clone)]
 pub enum VideoDataSource {
     File { path: PathBuf },
-    Memory,
+    ProcessMemory,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,7 +104,7 @@ pub fn get_video_config(
                 )),
                 ConfigVersion::V3 => Ok(VideoConfig {
                     internal: InternalVideoConfig {
-                        source: VideoDataSource::Memory,
+                        source: VideoDataSource::ProcessMemory,
                         skip: 8,
                     },
                     shared: SharedVideoConfig {
@@ -116,7 +116,7 @@ pub fn get_video_config(
                 }),
                 ConfigVersion::V3P7 => Ok(VideoConfig {
                     internal: InternalVideoConfig {
-                        source: VideoDataSource::Memory,
+                        source: VideoDataSource::ProcessMemory,
                         skip: 8,
                     },
                     shared: SharedVideoConfig {
@@ -128,7 +128,7 @@ pub fn get_video_config(
                 }),
                 ConfigVersion::V3P24 => Ok(VideoConfig {
                     internal: InternalVideoConfig {
-                        source: VideoDataSource::Memory,
+                        source: VideoDataSource::ProcessMemory,
                         skip: 2629636,
                     },
                     shared: SharedVideoConfig {

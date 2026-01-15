@@ -3,10 +3,9 @@ use std::{
     io::{Read, Seek, SeekFrom},
 };
 
-use anyhow::{Context, Error, anyhow};
-use itertools::Itertools;
-use procfs::process::{MMapPath, all_processes};
+use anyhow::{Context, Error};
 
+use super::process::get_memory_file;
 use crate::config::{self, VideoConfig};
 
 #[derive(Debug)]
@@ -26,44 +25,8 @@ impl FrameReader {
                 File::open(path).context("could not open framebuffer file")?,
                 0,
             ),
-            config::VideoDataSource::Memory => {
-                let processes = all_processes()
-                    .context("could not get process iterator")?
-                    .filter_map(|p| {
-                        let p = p.ok()?;
-                        (p.stat().ok()?.comm == "xochitl").then_some(p)
-                    })
-                    .collect_vec();
-
-                if processes.len() != 1 {
-                    return Err(anyhow!(
-                        "expected exactly 1 xochitl process, found {}",
-                        processes.len(),
-                    ));
-                }
-                let process = processes.first().expect("just checked vector length");
-
-                let memory_file = process.mem().context("could not get xochitl memory file")?;
-
-                let framebuffer_path_name =
-                    MMapPath::from("/dev/fb0").context("could not build framebuffer path name")?;
-
-                let maps = process.maps().context("could not get process maps")?;
-                let maps = maps
-                    .iter()
-                    .filter(|m| m.pathname == framebuffer_path_name)
-                    .collect_vec();
-
-                if maps.len() != 1 {
-                    return Err(anyhow!(
-                        "expected exactly 1 xochitl memory maps, found {}",
-                        maps.len(),
-                    ));
-                }
-                let framebuffer_map = maps.first().expect("just checked vector length");
-                let offset = framebuffer_map.address.0 as usize;
-
-                (memory_file, offset)
+            config::VideoDataSource::ProcessMemory => {
+                get_memory_file().context("could not get file and offset for xochitl process")?
             }
         };
 
