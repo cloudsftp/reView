@@ -5,8 +5,9 @@ use std::{io::Read as _, thread::sleep, time::Duration};
 use anyhow::{Context, Error};
 use futures::stream::StreamExt;
 use gstreamer_app::AppSrc;
+use gstreamer_video::VideoFormat;
 use lz4_flex::frame::FrameDecoder;
-use review_server::config::CommunicatedConfig;
+use review_server::config::{CommunicatedConfig, PixelFormat};
 use tokio::net::TcpStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use tracing::{debug, info};
@@ -37,12 +38,18 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
 
     sleep(Duration::from_secs(1));
 
-    let (pipeline, appsrc) = build_pipeline().context("could not build gstreamer pipeline")?;
+    let (pipeline, appsrc) =
+        build_pipeline(&communicated_config).context("could not build gstreamer pipeline")?;
     pipeline
         .set_state(gstreamer::State::Playing)
         .context("could not start playing gstreamer pipeline")?;
 
-    let mut buffer = vec![0u8; (BYTES_PER_PIXEL * HEIGHT * WIDTH) as usize];
+    let mut buffer = vec![
+        0u8;
+        (communicated_config.video_config.height
+            * communicated_config.video_config.width
+            * communicated_config.video_config.bytes_per_pixel) as usize
+    ];
     loop {
         let n = decoded_video_data
             .read(&mut buffer)
@@ -50,14 +57,12 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
 
         let slice = buffer[..n].to_vec();
 
-        debug!("read {} bytes:\n\n{:?}", n, &slice);
+        debug!("read {} bytes", n);
 
         let buffer = gstreamer::Buffer::from_slice(slice);
         appsrc
             .push_buffer(buffer)
             .context("could not push buffer to app source")?;
-
-        sleep(Duration::from_secs_f64(1.));
     }
 }
 
@@ -78,10 +83,23 @@ async fn get_communicated_config(
     Ok((framed_stream.into_inner(), config))
 }
 
-fn build_pipeline() -> Result<(Pipeline, AppSrc), Error> {
-    let video_info = gstreamer_video::VideoInfo::builder(VIDEO_FORMAT, WIDTH, HEIGHT)
-        .build()
-        .context("could not build video info")?;
+fn to_video_format(pixel_format: &PixelFormat) -> VideoFormat {
+    match pixel_format {
+        PixelFormat::Rgb565le => todo!("not sure what the video format for RGB 565 LE is"),
+        PixelFormat::Gray8 => VideoFormat::Gray8,
+        PixelFormat::Gray16be => VideoFormat::Gray16Be,
+        PixelFormat::Bgra => VideoFormat::Bgra,
+    }
+}
+
+fn build_pipeline(communicated_config: &CommunicatedConfig) -> Result<(Pipeline, AppSrc), Error> {
+    let video_info = gstreamer_video::VideoInfo::builder(
+        to_video_format(&communicated_config.video_config.pixel_format),
+        communicated_config.video_config.width as u32,
+        communicated_config.video_config.height as u32,
+    )
+    .build()
+    .context("could not build video info")?;
 
     let appsrc = gstreamer_app::AppSrc::builder()
         .caps(

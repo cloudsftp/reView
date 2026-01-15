@@ -1,4 +1,4 @@
-use std::io::{Read, Write};
+use std::io::{self, Read, Write};
 use std::time::Duration;
 
 use anyhow::{Context, Error};
@@ -78,12 +78,13 @@ async fn open_connection(
 
     debug!("created frame reader, starting loop to send data");
 
-    /*
     io::copy(&mut frame_reader, &mut encoded_video_data)
         .context("error while copying frame buffer data to stream")?;
-    */
+
+    Ok(())
 
     // TODO: this problably can be a simple io::copy
+    /*
     let mut buffer = vec![0u8; frame_reader.frame_length()];
     loop {
         frame_reader
@@ -106,4 +107,5 @@ async fn open_connection(
 
         sleep(Duration::from_secs_f64(1. / (opts.framerate as f64))).await;
     }
+    */
 }

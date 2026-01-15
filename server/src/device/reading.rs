@@ -13,6 +13,7 @@ use crate::config::{self, VideoConfig};
 pub struct FrameReader {
     file: File,
     offset: usize,
+    current: usize,
     width: usize,
     height: usize,
     bytes_per_pixel: usize,
@@ -35,41 +36,71 @@ impl FrameReader {
         );
         let offset = offset + video_config.internal.skip;
 
-        Ok(Self {
+        let mut frame_reader = Self {
             file,
             offset,
+            current: 0,
             width: video_config.shared.width,
             height: video_config.shared.height,
             bytes_per_pixel: video_config.shared.bytes_per_pixel,
-        })
+        };
+
+        frame_reader
+            .point_file_to_beginning_of_frame()
+            .context("could not point file to beginning of frame")?;
+
+        Ok(frame_reader)
     }
 
     pub fn frame_length(&self) -> usize {
         self.width * self.height * self.bytes_per_pixel
     }
 
-    pub fn read_one_frame(&mut self, buf: &mut [u8]) -> Result<(), Error> {
-        trace!("attempting to read one frame");
-        if buf.len() != self.frame_length() {
-            return Err(anyhow!(
-                "frame is {} bytes long, but buffer is only {} bytes long",
+    fn point_file_to_beginning_of_frame(&mut self) -> std::io::Result<()> {
+        self.file.seek(SeekFrom::Start(self.offset as u64))?;
+        self.current = 0;
+
+        Ok(())
+    }
+}
+
+impl Read for FrameReader {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = buf.len();
+
+        trace!("requested to read {} bytes from process", n);
+
+        let n = if self.current + n < self.frame_length() {
+            trace!(
+                "reading next {} bytes from process (current: {}, end: {})",
+                n,
+                self.current,
                 self.frame_length(),
-                buf.len(),
-            ));
-        }
+            );
 
-        trace!("pointing file to start of frame: {}", self.offset);
-        self.file
-            .seek(SeekFrom::Start(self.offset as u64))
-            .context("could not point file to beginning of frame")?;
-        trace!("reading one frame from memory: {} bytes", buf.len());
-        self.file
-            .read_exact(buf)
-            .context(format!("could not read {} bytes from memory", buf.len()))
-            .map(|_| {
-                trace!("successfully read one frame from memory");
+            self.file.read_exact(buf)?;
+            self.current += n;
 
-                ()
-            })
+            n
+        } else {
+            let n = self.frame_length() - self.current;
+
+            trace!(
+                "reading last {} bytes from process (current: {}, end: {})",
+                n,
+                self.current,
+                self.frame_length(),
+            );
+
+            self.file.read_exact(&mut buf[..n])?;
+
+            self.point_file_to_beginning_of_frame()?;
+
+            n
+        };
+
+        trace!("read exactly {} bytes from process", n);
+
+        Ok(n)
     }
 }
