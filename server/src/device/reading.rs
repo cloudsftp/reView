@@ -3,16 +3,16 @@ use std::{
     io::{Read, Seek, SeekFrom},
 };
 
-use anyhow::{Context, Error};
+use anyhow::{Context, Error, anyhow};
+use tracing::trace;
 
-use super::process::get_memory_file;
+use super::process::get_xochitl_memory_file;
 use crate::config::{self, VideoConfig};
 
 #[derive(Debug)]
 pub struct FrameReader {
     file: File,
     offset: usize,
-    current: usize,
     width: usize,
     height: usize,
     bytes_per_pixel: usize,
@@ -25,52 +25,51 @@ impl FrameReader {
                 File::open(path).context("could not open framebuffer file")?,
                 0,
             ),
-            config::VideoDataSource::ProcessMemory => {
-                get_memory_file().context("could not get file and offset for xochitl process")?
-            }
+            config::VideoDataSource::ProcessMemory => get_xochitl_memory_file()
+                .context("could not get file and offset for xochitl process")?,
         };
 
-        let mut frame_reader = Self {
+        trace!(
+            "file offset: {}, extra skip: {}",
+            offset, video_config.internal.skip
+        );
+        let offset = offset + video_config.internal.skip;
+
+        Ok(Self {
             file,
             offset,
-            current: 0,
             width: video_config.shared.width,
             height: video_config.shared.height,
             bytes_per_pixel: video_config.shared.bytes_per_pixel,
-        };
-        frame_reader
-            .point_file_to_framebuffer_memory_start()
-            .context("could not initialize file to offset")?;
-        Ok(frame_reader)
+        })
     }
 
     pub fn frame_length(&self) -> usize {
         self.width * self.height * self.bytes_per_pixel
     }
 
-    // TODO: anyhow error handling instead of io Errors
-    fn point_file_to_framebuffer_memory_start(&mut self) -> std::io::Result<()> {
-        self.file.seek(SeekFrom::Start(self.offset as u64))?;
-        self.current = 0;
-
-        Ok(())
-    }
-}
-
-impl Read for FrameReader {
-    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
-        let requested = buf.len();
-        let bytes_read = if self.current + requested < self.frame_length() {
-            self.file.read(buf)?
-        } else {
-            let rest = self.frame_length() - self.current;
-            self.file.read(&mut buf[0..rest])?
-        };
-
-        self.current += bytes_read;
-        if self.current == self.frame_length() {
-            self.point_file_to_framebuffer_memory_start()?;
+    pub fn read_one_frame(&mut self, buf: &mut [u8]) -> Result<(), Error> {
+        trace!("attempting to read one frame");
+        if buf.len() != self.frame_length() {
+            return Err(anyhow!(
+                "frame is {} bytes long, but buffer is only {} bytes long",
+                self.frame_length(),
+                buf.len(),
+            ));
         }
-        Ok(bytes_read)
+
+        trace!("pointing file to start of frame: {}", self.offset);
+        self.file
+            .seek(SeekFrom::Start(self.offset as u64))
+            .context("could not point file to beginning of frame")?;
+        trace!("reading one frame from memory: {} bytes", buf.len());
+        self.file
+            .read_exact(buf)
+            .context(format!("could not read {} bytes from memory", buf.len()))
+            .map(|_| {
+                trace!("successfully read one frame from memory");
+
+                ()
+            })
     }
 }

@@ -35,6 +35,8 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
 
     let mut decoded_video_data = FrameDecoder::new(stream);
 
+    sleep(Duration::from_secs(1));
+
     let (pipeline, appsrc) = build_pipeline().context("could not build gstreamer pipeline")?;
     pipeline
         .set_state(gstreamer::State::Playing)

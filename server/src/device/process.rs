@@ -1,9 +1,11 @@
 use std::fs::File;
 
 use anyhow::{Context, Error, anyhow};
-use procfs::process::{MMapPath, Process, all_processes};
+use itertools::Itertools;
+use procfs::process::{MMapPath, MemoryMap, Process, all_processes};
+use tracing::trace;
 
-pub fn get_memory_file() -> Result<(File, usize), Error> {
+pub fn get_xochitl_memory_file() -> Result<(File, usize), Error> {
     let process = get_process().context("could not get xochitl process")?;
 
     let memory_file = process.mem().context("could not get xochitl memory file")?;
@@ -30,16 +32,22 @@ fn get_process() -> Result<Process, Error> {
     Ok(process)
 }
 
+/// Get the offset of the framebuffer in the process memory
+///
+/// The framebuffer is the next mapped file after /dev/fb0
 fn get_framebuffer_offset_in_process_memory(process: &Process) -> Result<usize, Error> {
     let framebuffer_path_name =
         MMapPath::from("/dev/fb0").context("could not build framebuffer path name")?;
 
+    let matches_path_name = |m: &&MemoryMap| m.pathname == framebuffer_path_name;
+
     let maps = process.maps().context("could not get process maps")?;
-    let mut maps = maps.iter().filter(|m| m.pathname == framebuffer_path_name);
+
+    let mut maps = maps.iter().skip_while(|m| !matches_path_name(m)).skip(1);
 
     let framebuffer_map = maps.next().expect("found no framebuffer map");
 
-    if let Some(_) = maps.next() {
+    if let Some(_) = maps.filter(matches_path_name).next() {
         return Err(anyhow!("found more than one framebuffer map"));
     }
 

@@ -87,7 +87,7 @@ async fn open_connection(
     let mut buffer = vec![0u8; frame_reader.frame_length()];
     loop {
         frame_reader
-            .read_exact(&mut buffer)
+            .read_one_frame(&mut buffer)
             .context("error reading frame from file")?;
 
         debug!("read exactly {} bytes from frame reader", buffer.len());
