@@ -3,7 +3,7 @@ use std::{
     io::{Read, Seek, SeekFrom},
 };
 
-use anyhow::{Context, Error, anyhow};
+use anyhow::{Context, Error};
 use tracing::trace;
 
 use super::process::get_xochitl_memory_file;
