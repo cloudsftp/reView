@@ -36,7 +36,7 @@ pub async fn start_server(
     let server_options = ServerOptions {
         port: 6680,
         show_cursor: false,
-        framerate: 10,
+        framerate: 120,
     };
 
     let restream_command = Box::leak(Box::new(format!(
