@@ -34,7 +34,10 @@ func (m *ReView) CheckAndTestAll(ctx context.Context, source *dagger.Directory) 
 	return "ok", nil
 }
 
-func (m *ReView) BuildClient(source *dagger.Directory) *dagger.File {
+func (m *ReView) BuildClient(
+	// +ignore=["target"]
+	source *dagger.Directory,
+) *dagger.File {
 	return linuxContainer(source).
 		WithExec([]string{
 			"cargo", "build", "--release",
@@ -59,17 +62,19 @@ func linuxContainer(source *dagger.Directory) *dagger.Container {
 		WithWorkdir("/source").
 
 		// Cache
-		WithMountedCache("/cache/cargo", dag.CacheVolume("rust-packages")).
-		WithEnvVariable("CARGO_HOME", "/cache/cargo").
+		WithMountedCache("/root/.cargo/registry", dag.CacheVolume("rust-packages")).
 		WithMountedCache("target", dag.CacheVolume("rust-target"))
 }
 
-func (m *ReView) BuildServer(source *dagger.Directory) *dagger.File {
+func (m *ReView) BuildServer(
+	// +ignore=["target"]
+	source *dagger.Directory,
+) *dagger.File {
 	return toltecContainer(source).
 		WithExec([]string{
 			"bash", "-c",
 			"source /opt/x-tools/switch-arm.sh; " +
-				"cargo build --release --bin review-server --target " + RemarkableTarget,
+				"cargo build --release --bin review-server",
 		}).
 		WithExec(
 			[]string{"cp", "target/" + RemarkableTarget + "/release/review-server", "review-server"},
@@ -83,7 +88,9 @@ func toltecContainer(source *dagger.Directory) *dagger.Container {
 
 		// Sources
 		WithDirectory("/source", source).
-		WithWorkdir("/source")
+		WithWorkdir("/source").
 
-	// Sadly caching breaks compile :(
+		// Cache
+		WithMountedCache("/root/.cargo/registry", dag.CacheVolume("rust-packages-toltec")).
+		WithMountedCache("target", dag.CacheVolume("rust-target-toltec"))
 }

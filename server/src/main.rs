@@ -35,6 +35,7 @@ fn initialize_logging() -> Result<(), Error> {
     let log_file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open("./review.log")
         .context("could not open log file")?;
 

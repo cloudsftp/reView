@@ -1,13 +1,13 @@
-use std::io::{Read, Write};
 use std::time::Duration;
 
 use anyhow::{Context, Error};
 use futures::sink::SinkExt;
-use lz4_flex::frame::FrameEncoder;
+use lz4_flex::compress_prepend_size;
 use tokio::net::{TcpListener, TcpStream};
-use tokio::time::sleep;
+use tokio::time::{MissedTickBehavior, interval};
+use tokio_util::bytes::Bytes;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 use crate::device::reading::FrameReader;
 use crate::{
@@ -33,17 +33,19 @@ pub async fn listen_for_clients(
         .await
         .context(format!("could not bind to port {}", opts.port))?;
 
-    loop {
-        let (stream, addr) = listener.accept().await?;
-        info!("new connection from {}", addr);
+    let (stream, addr) = listener.accept().await?;
+    info!("new connection from {}", addr);
 
-        tokio::spawn(open_connection(
-            stream,
-            opts.clone(),
-            video_config.clone(),
-            communicated_config.clone(),
-        ));
-    }
+    open_connection(
+        stream,
+        opts.clone(),
+        video_config.clone(),
+        communicated_config.clone(),
+    )
+    .await
+    .context("error while handling TCP connections")?;
+
+    Ok(())
 }
 
 async fn open_connection(
@@ -54,56 +56,44 @@ async fn open_connection(
 ) -> Result<(), Error> {
     let mut framed = Framed::new(stream, LengthDelimitedCodec::new());
 
-    let bytes = bson::serialize_to_vec(&communicated_config)
+    let bytes: Bytes = bson::serialize_to_vec(&communicated_config)
         .context("could not serialize communicated config")?
         .into();
 
     framed
-        .send(bytes)
+        .send(bytes.iter().copied().collect())
         .await
         .context("could not send out config")?;
 
-    let stream = framed
-        .into_inner()
-        .into_std()
-        .context("could not turn stream into std")?;
-
-    stream
-        .set_write_timeout(Some(Duration::from_secs(1)))
-        .context("could not set write timeout")?;
-
-    let mut encoded_video_data = FrameEncoder::new(stream);
     let mut frame_reader =
         FrameReader::new(video_config).context("could not create frame reader")?;
 
     debug!("created frame reader, starting loop to send data");
 
-    /*
-    io::copy(&mut frame_reader, &mut encoded_video_data)
-        .context("error while copying frame buffer data to stream")?;
-    */
+    let mut interval = interval(Duration::from_secs_f64(1. / (opts.framerate as f64)));
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
-    // TODO: this problably can be a simple io::copy
     let mut buffer = vec![0u8; frame_reader.frame_length()];
     loop {
+        interval.tick().await;
+
         frame_reader
-            .read_exact(&mut buffer)
+            .read_frame(&mut buffer)
             .context("error reading frame from file")?;
 
-        debug!("read exactly {} bytes from frame reader", buffer.len());
+        debug!("read {} bytes from frame reader", buffer.len());
 
-        encoded_video_data
-            .write_all(&buffer)
+        let encoded_buffer = compress_prepend_size(&buffer);
+        trace!(
+            "writing encoded bytes to stream (length {})",
+            encoded_buffer.len(),
+        );
+
+        framed
+            .send(encoded_buffer.into())
+            .await
             .context("could not write frame to encoder")?;
 
-        debug!("wrote the data to the encoder");
-
-        encoded_video_data
-            .flush()
-            .context("failed to flush encoder")?;
-
-        debug!("flushed the encoded video data");
-
-        sleep(Duration::from_secs_f64(1. / (opts.framerate as f64))).await;
+        debug!("wrote the data to the output stream");
     }
 }

@@ -5,19 +5,7 @@ use std::{
 
 use anyhow::{Context, Error};
 use clap::Parser;
-use gstreamer_video::VideoFormat;
-
-// TODO: get this info from reMarkable tablet directly
-// first parse firmware version (on server)
-// second set all settings accordingly
-// third send out height, width, pixel format, and bytes per pixel to client
-pub const HEIGHT: u32 = 1872;
-pub const WIDTH: u32 = 1404;
-pub const PIXEL_FORMAT: &str = "bgra";
-pub const VIDEO_FORMAT: VideoFormat = VideoFormat::Bgra;
-pub const BYTES_PER_PIXEL: u32 = 4;
-pub const FILE: &str = ":mem:";
-pub const SKIP_OFFSET: usize = 2629636;
+use review_server::config::ServerOptions;
 
 const DEFAULT_IP: &str = "10.11.99.1";
 const DEFAULT_SSH_PORT: u16 = 22;
@@ -42,9 +30,17 @@ pub struct CliOptions {
     #[arg(long, name = "tcp-port")]
     tcp_port: Option<u16>,
 
+    /// Framerate (default: 120)
+    #[arg(long, name = "framerate")]
+    framerate: Option<f32>,
+
     /// Dark mode - invert colors (default: false)
     #[arg(long, name = "dark-mode")]
     dark_mode: bool,
+
+    /// Show cursor (default: false)
+    #[arg(long, name = "show-cursor")]
+    show_cursor: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -52,8 +48,10 @@ pub struct ClientOptions {
     pub remarkable_ip: String,
     pub ssh_port: u16,
     pub ssh_key: PathBuf,
-    pub tcp_port: u16,
     pub dark_mode: bool,
+    pub tcp_port: u16,
+    pub show_cursor: bool,
+    pub framerate: f32,
 }
 
 impl From<CliOptions> for ClientOptions {
@@ -67,17 +65,46 @@ impl From<CliOptions> for ClientOptions {
             ssh_port: resolve_with(
                 value.ssh_port,
                 "REMARKABLE_SSH_PORT",
-                |string| string.parse().context("could not parse"),
+                |string| {
+                    string
+                        .parse()
+                        .context("could not parse SSH port from environment")
+                },
                 DEFAULT_SSH_PORT,
             ),
             ssh_key: must_resolve_option(value.ssh_key, "REMARKABLE_SSH_KEY_PATH"),
             tcp_port: resolve_with(
                 value.tcp_port,
                 "REMARKABLE_TCP_PORT",
-                |string| string.parse().context("could not parse"),
+                |string| {
+                    string
+                        .parse()
+                        .context("could not parse TCP port from environment")
+                },
                 DEFAULT_TCP_PORT,
             ),
+            framerate: resolve_with(
+                value.framerate,
+                "REMARKABLE_FRAMERATE",
+                |string| {
+                    string
+                        .parse()
+                        .context("could not parse framerate from environment")
+                },
+                120.,
+            ),
             dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
+            show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),
+        }
+    }
+}
+
+impl Into<ServerOptions> for ClientOptions {
+    fn into(self) -> ServerOptions {
+        ServerOptions {
+            port: self.tcp_port,
+            show_cursor: self.show_cursor,
+            framerate: self.framerate,
         }
     }
 }

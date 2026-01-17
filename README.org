@@ -41,7 +41,9 @@ Options:
       --ssh-port <ssh-port>            SSH Port used by the reMarkable tablet (default: 22)
       --ssh-key <ssh-key>              Private SSH key file path
       --tcp-port <tcp-port>            TCP port for video stream (default: 6680)
+      --framerate <framerate>          Framerate (default: 120)
       --dark-mode                      Dark mode - invert colors (default: false)
+      --show-cursor                    Show cursor (default: false)
   -h, --help                           Print help
   -V, --version                        Print version
 #+end_src
@@ -53,7 +55,9 @@ Corresponding keys:
 - =REMARKABLE_SSH_PORT=
 - =REMARKABLE_SSH_KEY_PATH=
 - =REMARKABLE_TCP_PORT=
+- =REMARKABLE_FRAMERATE=
 - =REMARKABLE_DARK_MODE=
+- =REMARKABLE_SHOW_CURSOR=
 
 * Building
 
