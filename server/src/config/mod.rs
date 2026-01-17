@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 
-use crate::version::{ConfigVersion, FirmwareVersion, HardwareVersion, get_config_version};
 use anyhow::{Context, Error, anyhow};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
+
+use crate::version::{ConfigVersion, FirmwareVersion, HardwareVersion, get_config_version};
 
 #[derive(Parser, Debug)]
 #[command(author, version)]
@@ -16,7 +17,7 @@ pub struct CliOptions {
 pub struct ServerOptions {
     pub port: u16,
     pub show_cursor: bool,
-    pub framerate: u8,
+    pub framerate: f32,
 }
 
 impl TryFrom<CliOptions> for ServerOptions {

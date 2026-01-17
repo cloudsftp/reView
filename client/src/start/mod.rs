@@ -33,12 +33,7 @@ pub async fn start_server(
 > {
     let (stdout_tx, stdout_rx) = mpsc::channel(10);
 
-    let server_options = ServerOptions {
-        port: 6680,
-        show_cursor: false,
-        framerate: 120,
-    };
-
+    let server_options: ServerOptions = opts.into();
     let restream_command = Box::leak(Box::new(format!(
         "RUST_LOG=trace ./review-server '{}'",
         serde_json::to_string(&server_options)
