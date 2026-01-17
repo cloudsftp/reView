@@ -10,7 +10,7 @@ use lz4_flex::frame::FrameDecoder;
 use review_server::config::{CommunicatedConfig, PixelFormat};
 use tokio::net::TcpStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
-use tracing::{debug, info};
+use tracing::{debug, info, trace};
 
 use gstreamer::{Pipeline, prelude::*};
 
@@ -24,19 +24,21 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
         .await
         .context("could not connect to TCP stream")?;
 
-    let (stream, communicated_config) = get_communicated_config(stream)
+    let mut framed_stream = Framed::new(stream, LengthDelimitedCodec::new());
+    let communicated_config = get_communicated_config(&mut framed_stream)
         .await
         .context("could not get communicated config from TCP stream")?;
 
     debug!("received communicated config: {:?}", &communicated_config);
 
-    let stream = stream
+    /*
+    let mut stream = stream
         .into_std()
         .context("could not convert stream into std")?;
 
-    let mut decoded_video_data = FrameDecoder::new(stream);
+    // let mut decoded_video_data = FrameDecoder::new(stream);
 
-    sleep(Duration::from_secs(1));
+    */
 
     let (pipeline, appsrc) =
         build_pipeline(&communicated_config).context("could not build gstreamer pipeline")?;
@@ -44,22 +46,25 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
         .set_state(gstreamer::State::Playing)
         .context("could not start playing gstreamer pipeline")?;
 
-    let mut buffer = vec![
-        0u8;
-        (communicated_config.video_config.height
-            * communicated_config.video_config.width
-            * communicated_config.video_config.bytes_per_pixel) as usize
-    ];
+    let n = 4;
+
     loop {
-        let n = decoded_video_data
-            .read(&mut buffer)
-            .context("could not read from TCP stream")?;
+        let mut full_frame = vec![];
+        for _ in 0..n {
+            debug!("attempting to read data from TCP stream");
 
-        let slice = buffer[..n].to_vec();
+            let frame = framed_stream
+                .next()
+                .await
+                .context("TCP stream was closed")?
+                .context("could not read from TCP stream")?;
 
-        debug!("read {} bytes", n);
+            debug!("received {} bytes from TCP stream", frame.len());
 
-        let buffer = gstreamer::Buffer::from_slice(slice);
+            full_frame.append(&mut frame.iter().copied().collect());
+        }
+
+        let buffer = gstreamer::Buffer::from_slice(full_frame);
         appsrc
             .push_buffer(buffer)
             .context("could not push buffer to app source")?;
@@ -67,10 +72,8 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
 }
 
 async fn get_communicated_config(
-    tcp_stream: TcpStream,
-) -> Result<(TcpStream, CommunicatedConfig), Error> {
-    let mut framed_stream = Framed::new(tcp_stream, LengthDelimitedCodec::new());
-
+    framed_stream: &mut Framed<TcpStream, LengthDelimitedCodec>,
+) -> Result<CommunicatedConfig, Error> {
     let config_bytes = framed_stream
         .next()
         .await
@@ -80,7 +83,7 @@ async fn get_communicated_config(
     let config = bson::deserialize_from_slice(&config_bytes)
         .context("could not deserialize config from bytes")?;
 
-    Ok((framed_stream.into_inner(), config))
+    Ok(config)
 }
 
 fn to_video_format(pixel_format: &PixelFormat) -> VideoFormat {
