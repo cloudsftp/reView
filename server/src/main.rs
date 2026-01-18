@@ -1,4 +1,5 @@
 mod config;
+mod connection;
 mod device;
 mod version;
 
@@ -6,27 +7,45 @@ use std::fs::OpenOptions;
 
 use anyhow::{Context, Error};
 use clap::Parser;
-use config::{CliOptions, ServerOptions, VideoConfig, get_video_config};
+use config::server::{CliOptions, ServerOptions};
 use tracing::{debug, info};
 use tracing_subscriber::{Registry, fmt, layer::SubscriberExt};
-use version::{get_firmware_version, get_hardware_version};
 
-use crate::{
-    device::connection::listen_for_clients,
-    version::{FirmwareVersion, HardwareVersion},
-};
+use connection::Connection;
+use version::VersionInfo;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     initialize_logging().context("could not initialize logging")?;
 
-    let opts = get_command_line_options().context("could not read command line options")?;
-    let (hardware_version, firmware_version, video_config) =
-        get_versions_and_config().context("could not gather version infos and video config")?;
+    let server_options =
+        get_command_line_options().context("could not read command line options")?;
 
-    listen_for_clients(hardware_version, firmware_version, video_config, opts)
+    let version_info =
+        VersionInfo::get_from_device().context("could not get version information")?;
+
+    info!(
+        "got version information: hardware {:?}, firmware {}",
+        version_info.hardware, version_info.firmware,
+    );
+    info!("initializing TCP connection");
+
+    let mut conn = Connection::new(server_options)
         .await
-        .context("problem while listening for connections")?;
+        .context("error while handling TCP connection")?;
+
+    info!("sending out version information");
+
+    conn.send_version_info(version_info)
+        .await
+        .context("could not send out version information")?;
+
+    let device_config = conn
+        .receive_device_config()
+        .await
+        .context("could not receive device config")?;
+
+    info!("received device config {:?}", &device_config);
 
     Ok(())
 }
@@ -50,24 +69,11 @@ fn initialize_logging() -> Result<(), Error> {
 }
 
 fn get_command_line_options() -> Result<ServerOptions, Error> {
-    let opts = CliOptions::parse();
-    debug!("cli options: {:?}", opts);
-    let opts = ServerOptions::try_from(opts).context("could not get server options")?;
-    debug!("resolved options: {:?}", opts);
+    let cli_options = CliOptions::parse();
+    debug!("cli options: {:?}", cli_options);
+    let server_options =
+        ServerOptions::try_from(cli_options).context("could not get server options")?;
+    debug!("resolved options: {:?}", server_options);
 
-    Ok(opts)
-}
-
-fn get_versions_and_config() -> Result<(HardwareVersion, FirmwareVersion, VideoConfig), Error> {
-    let hardware_version = get_hardware_version().context("could not get hardware version")?;
-    info!("Detected hardware version {:?}", hardware_version);
-
-    let firmware_version = get_firmware_version().context("could not get version")?;
-    info!("Detected firmware version {:?}", firmware_version);
-
-    let video_config =
-        get_video_config(&hardware_version, &firmware_version).context("could not get config")?;
-    info!("using video config: {:?}", video_config);
-
-    Ok((hardware_version, firmware_version, video_config))
+    Ok(server_options)
 }
