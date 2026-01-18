@@ -72,7 +72,7 @@ fn build_pipeline(video_config: &VideoConfig) -> Result<(Pipeline, AppSrc), Erro
 
 fn to_video_format(pixel_format: &PixelFormat) -> VideoFormat {
     match pixel_format {
-        PixelFormat::Rgb565le => todo!("not sure what the video format for RGB 565 LE is"),
+        PixelFormat::Rgb565le => VideoFormat::Rgb16, // TODO: not sure
         PixelFormat::Gray8 => VideoFormat::Gray8,
         PixelFormat::Gray16be => VideoFormat::Gray16Be,
         PixelFormat::Bgra => VideoFormat::Bgra,
