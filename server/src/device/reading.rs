@@ -7,7 +7,7 @@ use anyhow::{Context, Error, anyhow};
 use tracing::trace;
 
 use super::process::get_xochitl_memory_file;
-use crate::config::{self, VideoConfig};
+use crate::config::device::{DeviceConfig, FramebufferDataSource};
 
 #[derive(Debug)]
 pub struct FrameReader {
@@ -19,28 +19,28 @@ pub struct FrameReader {
 }
 
 impl FrameReader {
-    pub fn new(video_config: VideoConfig) -> Result<Self, Error> {
-        let (file, offset) = match video_config.internal.source {
-            config::VideoDataSource::File { path } => (
+    pub fn new(device_config: DeviceConfig) -> Result<Self, Error> {
+        let (file, offset) = match device_config.framebuffer_config.source {
+            FramebufferDataSource::File { path } => (
                 File::open(path).context("could not open framebuffer file")?,
                 0,
             ),
-            config::VideoDataSource::ProcessMemory => get_xochitl_memory_file()
+            FramebufferDataSource::ProcessMemory => get_xochitl_memory_file()
                 .context("could not get file and offset for xochitl process")?,
         };
 
         trace!(
             "file offset: {}, extra skip: {}",
-            offset, video_config.internal.skip
+            offset, device_config.framebuffer_config.skip,
         );
-        let offset = offset + video_config.internal.skip;
+        let offset = offset + device_config.framebuffer_config.skip;
 
         Ok(Self {
             file,
             offset,
-            width: video_config.shared.width,
-            height: video_config.shared.height,
-            bytes_per_pixel: video_config.shared.bytes_per_pixel,
+            width: device_config.video_config.width,
+            height: device_config.video_config.height,
+            bytes_per_pixel: device_config.video_config.pixel_format.bytes_per_pixel(),
         })
     }
 

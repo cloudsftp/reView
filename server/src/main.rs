@@ -11,7 +11,7 @@ use config::CliOptions;
 use tracing::info;
 use tracing_subscriber::{Registry, fmt, layer::SubscriberExt};
 
-use connection::Connection;
+use connection::{Connection, video::VideoConnection};
 use version::VersionInfo;
 
 #[tokio::main]
@@ -46,7 +46,9 @@ async fn main() -> Result<(), Error> {
 
     info!("received stream config {:?}", &stream_config);
 
-    // TODO: set up video streaming
+    let mut video_conn = VideoConnection::new(conn, stream_config)
+        .context("could not initialize video connection")?;
+    video_conn.run().await.context("error while streaming")?;
 
     Ok(())
 }

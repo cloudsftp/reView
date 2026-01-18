@@ -1,3 +1,5 @@
+pub mod video;
+
 use anyhow::{Context, Error};
 use futures::{StreamExt, sink::SinkExt};
 use tokio::net::{TcpListener, TcpStream};
@@ -51,44 +53,3 @@ impl Connection {
         Ok(stream_config)
     }
 }
-
-/*
-async fn open_connection(
-    stream: TcpStream,
-    opts: ServerOptions,
-    video_config: VideoConfig,
-    communicated_config: CommunicatedConfig,
-) -> Result<(), Error> {
-    let mut frame_reader =
-        FrameReader::new(video_config).context("could not create frame reader")?;
-
-    debug!("created frame reader, starting loop to send data");
-
-    let mut interval = interval(Duration::from_secs_f64(1. / (opts.framerate as f64)));
-    interval.set_missed_tick_behavior(MissedTickBehavior::Skip);
-
-    let mut buffer = vec![0u8; frame_reader.frame_length()];
-    loop {
-        interval.tick().await;
-
-        frame_reader
-            .read_frame(&mut buffer)
-            .context("error reading frame from file")?;
-
-        debug!("read {} bytes from frame reader", buffer.len());
-
-        let encoded_buffer = compress_prepend_size(&buffer);
-        trace!(
-            "writing encoded bytes to stream (length {})",
-            encoded_buffer.len(),
-        );
-
-        framed
-            .send(encoded_buffer.into())
-            .await
-            .context("could not write frame to encoder")?;
-
-        debug!("wrote the data to the output stream");
-    }
-}
-*/
