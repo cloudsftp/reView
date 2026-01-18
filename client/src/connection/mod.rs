@@ -1,6 +1,9 @@
 use anyhow::{Context, Error};
 use futures::{SinkExt, StreamExt};
-use review_server::{config::device::DeviceConfig, version::VersionInfo};
+use review_server::{
+    config::{StreamConfig, device::DeviceConfig},
+    version::VersionInfo,
+};
 use tokio::net::TcpStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use tracing::info;
@@ -41,14 +44,14 @@ impl Connection {
         Ok(version_info)
     }
 
-    pub async fn send_device_config(&mut self, device_config: DeviceConfig) -> Result<(), Error> {
+    pub async fn send_stream_config(&mut self, stream_config: StreamConfig) -> Result<(), Error> {
         let msg =
-            bson::serialize_to_vec(&device_config).context("could not serialize device config")?;
+            bson::serialize_to_vec(&stream_config).context("could not serialize stream config")?;
 
         self.framed
             .send(msg.into())
             .await
-            .context("could not send device config")
+            .context("could not send stream config")
             .map(|_| ())
     }
 }

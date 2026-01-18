@@ -4,7 +4,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
 use tracing::info;
 
-use crate::config::{device::DeviceConfig, server::ServerOptions};
+use crate::config::{CliOptions, StreamConfig};
 use crate::version::VersionInfo;
 
 #[derive(Debug)]
@@ -13,10 +13,10 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub async fn new(server_options: ServerOptions) -> Result<Self, Error> {
-        let listener = TcpListener::bind(&format!("0.0.0.0:{}", server_options.port))
+    pub async fn new(cli_options: CliOptions) -> Result<Self, Error> {
+        let listener = TcpListener::bind(&format!("0.0.0.0:{}", cli_options.port))
             .await
-            .context(format!("could not bind to port {}", server_options.port))?;
+            .context(format!("could not bind to port {}", cli_options.port))?;
 
         let (stream, addr) = listener.accept().await?;
         info!("new connection from {}", addr);
@@ -37,18 +37,18 @@ impl Connection {
             .map(|_| ())
     }
 
-    pub async fn receive_device_config(&mut self) -> Result<DeviceConfig, Error> {
+    pub async fn receive_stream_config(&mut self) -> Result<StreamConfig, Error> {
         let msg = self
             .framed
             .next()
             .await
-            .context("connection closed before device configuration was sent")?
-            .context("could not message with device configuration")?;
+            .context("connection closed before stream configuration was sent")?
+            .context("could not message with stream configuration")?;
 
-        let device_config =
-            bson::deserialize_from_slice(&msg).context("could not deserialize device config")?;
+        let stream_config =
+            bson::deserialize_from_slice(&msg).context("could not deserialize stream config")?;
 
-        Ok(device_config)
+        Ok(stream_config)
     }
 }
 

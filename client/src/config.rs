@@ -10,6 +10,8 @@ const DEFAULT_IP: &str = "10.11.99.1";
 const DEFAULT_SSH_PORT: u16 = 22;
 const DEFAULT_TCP_PORT: u16 = 6680;
 
+const DEFAULT_FRAMERATE: f32 = 50.;
+
 #[derive(Parser, Debug)]
 #[command(author, version)]
 pub struct CliOptions {
@@ -29,7 +31,7 @@ pub struct CliOptions {
     #[arg(long, name = "tcp-port")]
     tcp_port: Option<u16>,
 
-    /// Framerate (default: 120)
+    /// Framerate (default: 50)
     #[arg(long, name = "framerate")]
     framerate: Option<f32>,
 
@@ -90,7 +92,7 @@ impl From<CliOptions> for ClientOptions {
                         .parse()
                         .context("could not parse framerate from environment")
                 },
-                120.,
+                DEFAULT_FRAMERATE,
             ),
             dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
             show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use anyhow::{Context, Error, anyhow};
+use anyhow::{Error, anyhow};
 use serde::{Deserialize, Serialize};
 
 use crate::version::{FirmwareVersion, HardwareVersion, VersionInfo};

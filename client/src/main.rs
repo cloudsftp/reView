@@ -6,13 +6,11 @@ use anyhow::{Context, Error};
 use clap::Parser;
 use config::{CliOptions, ClientOptions};
 use connection::Connection;
-use review_server::config::device::DeviceConfig;
+use review_server::config::{StreamConfig, device::DeviceConfig};
 use tracing::{debug, info};
 
 /*
 use display::gstreamer_thread;
-
-use start::{connect_ssh, receive_output, start_server};
 */
 
 #[tokio::main]
@@ -22,14 +20,14 @@ async fn main() -> Result<(), Error> {
     let cli_options = CliOptions::parse();
     debug!("cli options: {:?}", cli_options);
     let client_options = ClientOptions::from(cli_options);
-    debug!("resolved options: {:?}", client_options);
+    debug!("resolved options: {:?}", &client_options);
 
     info!(
         "connecting to reMarkable tablet at {}:{}",
-        client_options.remarkable_ip, client_options.tcp_port
+        client_options.remarkable_ip, client_options.tcp_port,
     );
 
-    let mut conn = Connection::new(client_options)
+    let mut conn = Connection::new(client_options.clone())
         .await
         .context("could not initialize TCP connection")?;
 
@@ -45,9 +43,15 @@ async fn main() -> Result<(), Error> {
         version_info,
     ))?;
 
-    info!("sending out device config {:?}", &device_config);
+    let stream_config = StreamConfig {
+        device_config,
+        framerate: client_options.framerate,
+        show_cursor: client_options.show_cursor,
+    };
 
-    conn.send_device_config(device_config)
+    info!("sending out stream config {:?}", &stream_config);
+
+    conn.send_stream_config(stream_config)
         .await
         .context("could not send device config")?;
 
