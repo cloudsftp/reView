@@ -1,36 +1,59 @@
 mod config;
-mod device;
+mod connection;
+mod framebuffer;
 mod version;
 
 use std::fs::OpenOptions;
 
 use anyhow::{Context, Error};
 use clap::Parser;
-use config::{CliOptions, ServerOptions, VideoConfig, get_video_config};
-use tracing::{debug, info};
+use config::CliOptions;
+use tracing::info;
 use tracing_subscriber::{Registry, fmt, layer::SubscriberExt};
-use version::{get_firmware_version, get_hardware_version};
 
-use crate::{
-    device::connection::listen_for_clients,
-    version::{FirmwareVersion, HardwareVersion},
-};
+use connection::{Connection, video::VideoConnection};
+use version::VersionInfo;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     initialize_logging().context("could not initialize logging")?;
 
-    let opts = get_command_line_options().context("could not read command line options")?;
-    let (hardware_version, firmware_version, video_config) =
-        get_versions_and_config().context("could not gather version infos and video config")?;
+    let cli_options = CliOptions::parse();
 
-    listen_for_clients(hardware_version, firmware_version, video_config, opts)
+    let version_info =
+        VersionInfo::get_from_device().context("could not get version information")?;
+
+    info!(
+        "got version information: hardware {:?}, firmware {}",
+        version_info.hardware, version_info.firmware,
+    );
+    info!("initializing TCP connection");
+
+    let mut conn = Connection::new(cli_options)
         .await
-        .context("problem while listening for connections")?;
+        .context("error while handling TCP connection")?;
+
+    info!("sending out version information");
+
+    conn.send_version_info(version_info)
+        .await
+        .context("could not send out version information")?;
+
+    let stream_config = conn
+        .receive_stream_config()
+        .await
+        .context("could not receive stream config")?;
+
+    info!("received stream config {:?}", &stream_config);
+
+    let mut video_conn = VideoConnection::new(conn, stream_config)
+        .context("could not initialize video connection")?;
+    video_conn.run().await.context("error while streaming")?;
 
     Ok(())
 }
 
+// TODO: since now running as service, needed?
 fn initialize_logging() -> Result<(), Error> {
     let log_file = OpenOptions::new()
         .write(true)
@@ -47,27 +70,4 @@ fn initialize_logging() -> Result<(), Error> {
         .context("could not set global subscriber")?;
 
     Ok(())
-}
-
-fn get_command_line_options() -> Result<ServerOptions, Error> {
-    let opts = CliOptions::parse();
-    debug!("cli options: {:?}", opts);
-    let opts = ServerOptions::try_from(opts).context("could not get server options")?;
-    debug!("resolved options: {:?}", opts);
-
-    Ok(opts)
-}
-
-fn get_versions_and_config() -> Result<(HardwareVersion, FirmwareVersion, VideoConfig), Error> {
-    let hardware_version = get_hardware_version().context("could not get hardware version")?;
-    info!("Detected hardware version {:?}", hardware_version);
-
-    let firmware_version = get_firmware_version().context("could not get version")?;
-    info!("Detected firmware version {:?}", firmware_version);
-
-    let video_config =
-        get_video_config(&hardware_version, &firmware_version).context("could not get config")?;
-    info!("using video config: {:?}", video_config);
-
-    Ok((hardware_version, firmware_version, video_config))
 }

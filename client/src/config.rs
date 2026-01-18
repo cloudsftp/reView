@@ -1,15 +1,13 @@
-use std::{
-    env::{self, VarError},
-    path::PathBuf,
-};
+use std::env::{self, VarError};
 
 use anyhow::{Context, Error};
 use clap::Parser;
-use review_server::config::ServerOptions;
 
 const DEFAULT_IP: &str = "10.11.99.1";
 const DEFAULT_SSH_PORT: u16 = 22;
 const DEFAULT_TCP_PORT: u16 = 6680;
+
+const DEFAULT_FRAMERATE: f32 = 50.;
 
 #[derive(Parser, Debug)]
 #[command(author, version)]
@@ -18,19 +16,16 @@ pub struct CliOptions {
     #[arg(long, name = "remarkable-ip")]
     remarkable_ip: Option<String>,
 
-    /// SSH Port used by the reMarkable tablet (default: 22)
-    #[arg(long, name = "ssh-port")]
-    ssh_port: Option<u16>,
-
-    /// Private SSH key file path
-    #[arg(long, name = "ssh-key")]
-    ssh_key: Option<PathBuf>,
-
     /// TCP port for video stream (default: 6680)
     #[arg(long, name = "tcp-port")]
     tcp_port: Option<u16>,
 
-    /// Framerate (default: 120)
+    /*
+    /// Private SSH key file path
+    #[arg(long, name = "ssh-key")]
+    ssh_key: Option<PathBuf>,
+    */
+    /// Framerate (default: 50)
     #[arg(long, name = "framerate")]
     framerate: Option<f32>,
 
@@ -46,8 +41,7 @@ pub struct CliOptions {
 #[derive(Debug, Clone)]
 pub struct ClientOptions {
     pub remarkable_ip: String,
-    pub ssh_port: u16,
-    pub ssh_key: PathBuf,
+    //pub ssh_key: PathBuf,
     pub dark_mode: bool,
     pub tcp_port: u16,
     pub show_cursor: bool,
@@ -62,17 +56,7 @@ impl From<CliOptions> for ClientOptions {
                 "REMARKABLE_IP",
                 DEFAULT_IP.to_string(),
             ),
-            ssh_port: resolve_with(
-                value.ssh_port,
-                "REMARKABLE_SSH_PORT",
-                |string| {
-                    string
-                        .parse()
-                        .context("could not parse SSH port from environment")
-                },
-                DEFAULT_SSH_PORT,
-            ),
-            ssh_key: must_resolve_option(value.ssh_key, "REMARKABLE_SSH_KEY_PATH"),
+            //ssh_key: must_resolve_option(value.ssh_key, "REMARKABLE_SSH_KEY_PATH"),
             tcp_port: resolve_with(
                 value.tcp_port,
                 "REMARKABLE_TCP_PORT",
@@ -91,20 +75,10 @@ impl From<CliOptions> for ClientOptions {
                         .parse()
                         .context("could not parse framerate from environment")
                 },
-                120.,
+                DEFAULT_FRAMERATE,
             ),
             dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
             show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),
-        }
-    }
-}
-
-impl Into<ServerOptions> for ClientOptions {
-    fn into(self) -> ServerOptions {
-        ServerOptions {
-            port: self.tcp_port,
-            show_cursor: self.show_cursor,
-            framerate: self.framerate,
         }
     }
 }

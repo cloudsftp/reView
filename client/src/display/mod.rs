@@ -3,92 +3,46 @@ use super::config::*;
 use std::{io::Read as _, thread::sleep, time::Duration};
 
 use anyhow::{Context, Error};
-use futures::stream::StreamExt;
 use gstreamer_app::AppSrc;
 use gstreamer_video::VideoFormat;
-use lz4_flex::decompress_size_prepended;
-use review_server::config::{CommunicatedConfig, PixelFormat};
-use tokio::net::TcpStream;
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use review_server::config::device::{PixelFormat, VideoConfig};
 use tracing::{debug, info};
 
 use gstreamer::{Pipeline, prelude::*};
 
-pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
-    gstreamer::init().context("could not init gstreamer")?;
+#[derive(Debug)]
+pub struct Display {
+    pipeline: Pipeline,
+    appsrc: AppSrc,
+}
 
-    sleep(Duration::from_millis(100));
+impl Display {
+    pub fn new(video_config: VideoConfig) -> Result<Self, Error> {
+        gstreamer::init().context("could not init gstreamer")?;
 
-    info!("setting up TCP connection");
-    let stream = TcpStream::connect(format!("{}:{}", opts.remarkable_ip, opts.tcp_port))
-        .await
-        .context("could not connect to TCP stream")?;
+        let (pipeline, appsrc) =
+            build_pipeline(&video_config).context("could not build gstreamer pipeline")?;
+        pipeline
+            .set_state(gstreamer::State::Playing)
+            .context("could not start playing gstreamer pipeline")?;
 
-    let mut framed_stream = Framed::new(stream, LengthDelimitedCodec::new());
-    let communicated_config = get_communicated_config(&mut framed_stream)
-        .await
-        .context("could not get communicated config from TCP stream")?;
+        Ok(Self { pipeline, appsrc })
+    }
 
-    debug!("received communicated config: {:?}", &communicated_config);
-
-    let (pipeline, appsrc) =
-        build_pipeline(&communicated_config).context("could not build gstreamer pipeline")?;
-    pipeline
-        .set_state(gstreamer::State::Playing)
-        .context("could not start playing gstreamer pipeline")?;
-
-    loop {
-        debug!("attempting to read data from TCP stream");
-
-        let compressed_frame = framed_stream
-            .next()
-            .await
-            .context("TCP stream was closed")?
-            .context("could not read from TCP stream")?;
-
-        debug!(
-            "read one compressed frame from TCP stream ({} bytes)",
-            compressed_frame.len(),
-        );
-
-        let frame = decompress_size_prepended(&compressed_frame)
-            .context("could not decompress received frame")?;
-
-        debug!("decompressed: {} bytes", frame.len());
-
+    pub fn push_frame(&mut self, frame: Vec<u8>) -> Result<(), Error> {
         let buffer = gstreamer::Buffer::from_mut_slice(frame);
-        appsrc
+        self.appsrc
             .push_buffer(buffer)
-            .context("could not push buffer to app source")?;
+            .context("could not push buffer to app source")
+            .map(|_| ())
     }
 }
 
-async fn get_communicated_config(
-    framed_stream: &mut Framed<TcpStream, LengthDelimitedCodec>,
-) -> Result<CommunicatedConfig, Error> {
-    let config_bytes = framed_stream
-        .next()
-        .await
-        .context("received None as config bytes")?
-        .context("could not receive config bytes")?;
-
-    bson::deserialize_from_slice(&config_bytes).context("could not deserialize config from bytes")
-}
-
-fn to_video_format(pixel_format: &PixelFormat) -> VideoFormat {
-    match pixel_format {
-        PixelFormat::Rgb565le => todo!("not sure what the video format for RGB 565 LE is"),
-        PixelFormat::Gray8 => VideoFormat::Gray8,
-        PixelFormat::Gray16be => VideoFormat::Gray16Be,
-        PixelFormat::Bgra => VideoFormat::Bgra,
-    }
-}
-
-fn build_pipeline(communicated_config: &CommunicatedConfig) -> Result<(Pipeline, AppSrc), Error> {
+fn build_pipeline(video_config: &VideoConfig) -> Result<(Pipeline, AppSrc), Error> {
     let video_info = gstreamer_video::VideoInfo::builder(
-        to_video_format(&communicated_config.video_config.pixel_format),
-        communicated_config.video_config.width as u32,
-        communicated_config.video_config.height as u32,
+        to_video_format(&video_config.pixel_format),
+        video_config.width as u32,
+        video_config.height as u32,
     )
     .build()
     .context("could not build video info")?;
@@ -114,4 +68,13 @@ fn build_pipeline(communicated_config: &CommunicatedConfig) -> Result<(Pipeline,
         .context("could not link elements toghether")?;
 
     Ok((pipeline, appsrc))
+}
+
+fn to_video_format(pixel_format: &PixelFormat) -> VideoFormat {
+    match pixel_format {
+        PixelFormat::Rgb565le => VideoFormat::Rgb16, // TODO: not sure
+        PixelFormat::Gray8 => VideoFormat::Gray8,
+        PixelFormat::Gray16be => VideoFormat::Gray16Be,
+        PixelFormat::Bgra => VideoFormat::Bgra,
+    }
 }
