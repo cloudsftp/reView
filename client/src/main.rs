@@ -5,13 +5,9 @@ mod display;
 use anyhow::{Context, Error};
 use clap::Parser;
 use config::{CliOptions, ClientOptions};
-use connection::Connection;
+use connection::{Connection, video::VideoConnection};
 use review_server::config::{StreamConfig, device::DeviceConfig};
 use tracing::{debug, info};
-
-/*
-use display::gstreamer_thread;
-*/
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -44,7 +40,7 @@ async fn main() -> Result<(), Error> {
     ))?;
 
     let stream_config = StreamConfig {
-        device_config,
+        device_config: device_config.clone(),
         framerate: client_options.framerate,
         show_cursor: client_options.show_cursor,
     };
@@ -54,6 +50,13 @@ async fn main() -> Result<(), Error> {
     conn.send_stream_config(stream_config)
         .await
         .context("could not send device config")?;
+
+    let mut video_connection = VideoConnection::new(conn, device_config.video_config)
+        .context("could not initialize video connection")?;
+    video_connection
+        .run()
+        .await
+        .context("error while streaming")?;
 
     Ok(())
 }
