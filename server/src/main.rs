@@ -1,6 +1,6 @@
 mod config;
 mod connection;
-mod device;
+mod framebuffer;
 mod version;
 
 use std::fs::OpenOptions;

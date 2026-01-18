@@ -7,7 +7,7 @@ use tokio::time::{MissedTickBehavior, interval};
 use tracing::{debug, trace};
 
 use super::Connection;
-use crate::{config::StreamConfig, device::reading::FrameReader};
+use crate::{config::StreamConfig, framebuffer::reading::FrameReader};
 
 #[derive(Debug)]
 pub struct VideoConnection {
@@ -52,7 +52,7 @@ impl VideoConnection {
                 .framed
                 .send(encoded_buffer.into())
                 .await
-                .context("could not write frame to encoder")?;
+                .context("could not write frame to the stream")?;
 
             debug!("wrote the data to the output stream");
         }
