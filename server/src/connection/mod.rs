@@ -20,7 +20,10 @@ impl Connection {
             .await
             .context(format!("could not bind to port {}", cli_options.port))?;
 
-        let (stream, addr) = listener.accept().await?;
+        let (stream, addr) = listener
+            .accept()
+            .await
+            .context("error while waiting for a TCP connection")?;
         info!("new connection from {}", addr);
 
         let framed = Framed::new(stream, LengthDelimitedCodec::new());
