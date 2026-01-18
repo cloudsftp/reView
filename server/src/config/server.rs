@@ -1,12 +1,13 @@
-use anyhow::{Context, Error};
+use anyhow::Error;
 use clap::Parser;
 use serde::{Deserialize, Serialize};
 
 #[derive(Parser, Debug)]
 #[command(author, version)]
 pub struct CliOptions {
-    /// JSON object containing the server configuration
-    payload: String,
+    /// Port to listen for the TCP connections
+    #[arg(long, name = "port")]
+    pub port: u16,
 }
 
 /// Configurable options for the reView server
@@ -24,7 +25,11 @@ impl TryFrom<CliOptions> for ServerOptions {
     type Error = Error;
 
     fn try_from(value: CliOptions) -> Result<Self, Error> {
-        serde_json::from_str(&value.payload)
-            .context("could not parse JSON payload for server options")
+        Ok(Self {
+            port: value.port,
+            // TODO: show cursor and framerate communicated over tcp, not here
+            show_cursor: false,
+            framerate: 50.,
+        })
     }
 }

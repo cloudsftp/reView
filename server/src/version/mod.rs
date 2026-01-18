@@ -2,7 +2,7 @@
 mod tests;
 
 use core::fmt;
-use std::{fs, str::FromStr};
+use std::{fmt::Display, fs, str::FromStr};
 
 use anyhow::{Context, Error, Result, anyhow};
 use serde::{Deserialize, Serialize};
@@ -139,5 +139,14 @@ impl VersionInfo {
             hardware: HardwareVersion::get_from_device()?,
             firmware: FirmwareVersion::get_from_device()?,
         })
+    }
+}
+
+impl Display for VersionInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!(
+            "[ hardware: {:?}, firmware: {} ]",
+            self.hardware, self.firmware,
+        ))
     }
 }

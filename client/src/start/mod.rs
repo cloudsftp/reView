@@ -2,7 +2,7 @@ use super::config::*;
 
 use anyhow::{Context, Error};
 use async_ssh2_tokio::{AuthMethod, Client, ServerCheckMethod};
-use review_server::config::ServerOptions;
+use review_server::config::server::ServerOptions;
 use tokio::sync::mpsc::{self, Receiver};
 use tracing::{debug, info};
 

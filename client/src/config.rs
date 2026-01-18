@@ -5,7 +5,6 @@ use std::{
 
 use anyhow::{Context, Error};
 use clap::Parser;
-use review_server::config::ServerOptions;
 
 const DEFAULT_IP: &str = "10.11.99.1";
 const DEFAULT_SSH_PORT: u16 = 22;
@@ -95,16 +94,6 @@ impl From<CliOptions> for ClientOptions {
             ),
             dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
             show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),
-        }
-    }
-}
-
-impl Into<ServerOptions> for ClientOptions {
-    fn into(self) -> ServerOptions {
-        ServerOptions {
-            port: self.tcp_port,
-            show_cursor: self.show_cursor,
-            framerate: self.framerate,
         }
     }
 }

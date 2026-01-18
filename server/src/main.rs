@@ -47,6 +47,8 @@ async fn main() -> Result<(), Error> {
 
     info!("received device config {:?}", &device_config);
 
+    // TODO: set up video streaming
+
     Ok(())
 }
 

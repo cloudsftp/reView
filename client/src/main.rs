@@ -1,44 +1,55 @@
 mod config;
+mod connection;
 mod display;
-mod start;
 
 use anyhow::{Context, Error};
 use clap::Parser;
 use config::{CliOptions, ClientOptions};
-use start::{connect_ssh, receive_output, start_server};
-use tracing::{debug, error};
+use connection::Connection;
+use review_server::config::device::DeviceConfig;
+use tracing::{debug, info};
 
+/*
 use display::gstreamer_thread;
+
+use start::{connect_ssh, receive_output, start_server};
+*/
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     tracing_subscriber::fmt::init();
 
-    let opts = CliOptions::parse();
-    debug!("cli options: {:?}", opts);
-    let opts = ClientOptions::from(opts);
-    debug!("resolved options: {:?}", opts);
+    let cli_options = CliOptions::parse();
+    debug!("cli options: {:?}", cli_options);
+    let client_options = ClientOptions::from(cli_options);
+    debug!("resolved options: {:?}", client_options);
 
-    let client = connect_ssh(opts.clone())
+    info!(
+        "connecting to reMarkable tablet at {}:{}",
+        client_options.remarkable_ip, client_options.tcp_port
+    );
+
+    let mut conn = Connection::new(client_options)
         .await
-        .context("could not connect to reMarkable")?;
-    let (restream_command_future, mut restream_command_stdout) =
-        start_server(&client, opts.clone()).await?;
+        .context("could not initialize TCP connection")?;
 
-    let mut tcp_task = tokio::spawn(gstreamer_thread(opts));
+    let version_info = conn
+        .receive_version_info()
+        .await
+        .context("could not receive version info")?;
 
-    tokio::pin!(restream_command_future);
-    loop {
-        tokio::select! {
-            restream_exit_code = &mut restream_command_future => {
-                error!("restream command exited with code {}", restream_exit_code.context("could not execute restream command")?);
+    info!("received version information: {}", version_info);
 
-                let restream_output = receive_output(&mut restream_command_stdout).await?;
-                error!("stdout+stderr: (next line)\n\n{}\n", restream_output);
-            },
-            gstreamer_result = &mut tcp_task => {
-                error!("gstreamer exited with result: {:?}", gstreamer_result);
-            }
-        }
-    }
+    let device_config = DeviceConfig::new(version_info).context(format!(
+        "could not get device configuration for version {}",
+        version_info,
+    ))?;
+
+    info!("sending out device config {:?}", &device_config);
+
+    conn.send_device_config(device_config)
+        .await
+        .context("could not send device config")?;
+
+    Ok(())
 }

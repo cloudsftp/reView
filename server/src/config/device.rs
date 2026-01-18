@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Error, anyhow};
 use serde::{Deserialize, Serialize};
 
-use crate::version::{FirmwareVersion, HardwareVersion};
+use crate::version::{FirmwareVersion, HardwareVersion, VersionInfo};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum FramebufferDataSource {
@@ -52,14 +52,11 @@ pub struct DeviceConfig {
 }
 
 impl DeviceConfig {
-    pub fn new(
-        hardware_version: HardwareVersion,
-        firmware_version: FirmwareVersion,
-    ) -> Result<Self, Error> {
+    pub fn new(version_info: VersionInfo) -> Result<Self, Error> {
         let height = 1872;
         let width = 1404;
 
-        match hardware_version {
+        match version_info.hardware {
             HardwareVersion::Rm1 => Ok(DeviceConfig {
                 framebuffer_config: FramebufferConfig {
                     source: FramebufferDataSource::File {
@@ -76,12 +73,12 @@ impl DeviceConfig {
                 },
             }),
             HardwareVersion::Rm2 => {
-                let rm2_config_version = DeviceConfigVersion::from(firmware_version);
+                let rm2_config_version = DeviceConfigVersion::from(version_info.firmware);
 
                 match rm2_config_version {
                     DeviceConfigVersion::Ancient => Err(anyhow!(
                         "no known configuration values for reMarkable 2 with firmware version {}",
-                        firmware_version,
+                        version_info.firmware,
                     )),
                     DeviceConfigVersion::V3 => Ok(DeviceConfig {
                         framebuffer_config: FramebufferConfig {

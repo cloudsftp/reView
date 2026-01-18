@@ -1,3 +1,4 @@
+/*
 use super::config::*;
 
 use std::{io::Read as _, thread::sleep, time::Duration};
@@ -16,20 +17,6 @@ use gstreamer::{Pipeline, prelude::*};
 
 pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
     gstreamer::init().context("could not init gstreamer")?;
-
-    sleep(Duration::from_millis(100));
-
-    info!("setting up TCP connection");
-    let stream = TcpStream::connect(format!("{}:{}", opts.remarkable_ip, opts.tcp_port))
-        .await
-        .context("could not connect to TCP stream")?;
-
-    let mut framed_stream = Framed::new(stream, LengthDelimitedCodec::new());
-    let communicated_config = get_communicated_config(&mut framed_stream)
-        .await
-        .context("could not get communicated config from TCP stream")?;
-
-    debug!("received communicated config: {:?}", &communicated_config);
 
     let (pipeline, appsrc) =
         build_pipeline(&communicated_config).context("could not build gstreamer pipeline")?;
@@ -60,27 +47,6 @@ pub async fn gstreamer_thread(opts: ClientOptions) -> Result<(), Error> {
         appsrc
             .push_buffer(buffer)
             .context("could not push buffer to app source")?;
-    }
-}
-
-async fn get_communicated_config(
-    framed_stream: &mut Framed<TcpStream, LengthDelimitedCodec>,
-) -> Result<CommunicatedConfig, Error> {
-    let config_bytes = framed_stream
-        .next()
-        .await
-        .context("received None as config bytes")?
-        .context("could not receive config bytes")?;
-
-    bson::deserialize_from_slice(&config_bytes).context("could not deserialize config from bytes")
-}
-
-fn to_video_format(pixel_format: &PixelFormat) -> VideoFormat {
-    match pixel_format {
-        PixelFormat::Rgb565le => todo!("not sure what the video format for RGB 565 LE is"),
-        PixelFormat::Gray8 => VideoFormat::Gray8,
-        PixelFormat::Gray16be => VideoFormat::Gray16Be,
-        PixelFormat::Bgra => VideoFormat::Bgra,
     }
 }
 
@@ -115,3 +81,4 @@ fn build_pipeline(communicated_config: &CommunicatedConfig) -> Result<(Pipeline,
 
     Ok((pipeline, appsrc))
 }
+*/
