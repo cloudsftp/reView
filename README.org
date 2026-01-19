@@ -2,6 +2,20 @@
 
 Based on [[https://github.com/rien/reStream][reStream]]
 
+Please note that this project is still under heavy development.
+If you run this program, anyone on your network could connect to your reMarkable and stream the contents of your screen.
+
+#+BEGIN_HTML
+<p align="center">
+    <a href="https://img.shields.io/badge/Version-v0.1.0-blue">
+        <img src="https://img.shields.io/badge/Version-v0.1.0-blue">
+    </a>
+    <a href="https://github.com/cloudsftp/reView/actions/workflows/compile.yaml">
+        <img src="https://github.com/cloudsftp/reView/actions/workflows/compile.yaml/badge.svg">
+    </a>
+</p>
+#+END_HTML
+
 * Dependencies
 
 You need
@@ -39,6 +53,9 @@ And then start it manually.
 #+begin_src shell
 ssh root@${REMARKABLE_IP} 'RUST_LOG=trace ./review-server --port 6680'
 #+end_src
+
+Note: server does not exit when you abort the SSH command above.
+Consider running the server in a SSH session.
 
 TODO: Install it as service
 

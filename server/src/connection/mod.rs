@@ -2,11 +2,10 @@ pub mod video;
 
 use anyhow::{Context, Error};
 use futures::{StreamExt, sink::SinkExt};
-use tokio::net::{TcpListener, TcpStream};
+use tokio::net::TcpStream;
 use tokio_util::codec::{Framed, LengthDelimitedCodec};
-use tracing::info;
 
-use crate::config::{CliOptions, StreamConfig};
+use crate::config::StreamConfig;
 use crate::version::VersionInfo;
 
 #[derive(Debug)]
@@ -15,20 +14,10 @@ pub struct Connection {
 }
 
 impl Connection {
-    pub async fn new(cli_options: CliOptions) -> Result<Self, Error> {
-        let listener = TcpListener::bind(&format!("0.0.0.0:{}", cli_options.port))
-            .await
-            .context(format!("could not bind to port {}", cli_options.port))?;
-
-        let (stream, addr) = listener
-            .accept()
-            .await
-            .context("error while waiting for a TCP connection")?;
-        info!("new connection from {}", addr);
-
+    pub fn new(stream: TcpStream) -> Self {
         let framed = Framed::new(stream, LengthDelimitedCodec::new());
 
-        Ok(Connection { framed })
+        Connection { framed }
     }
 
     pub async fn send_version_info(&mut self, version_info: VersionInfo) -> Result<(), Error> {

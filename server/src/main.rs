@@ -8,7 +8,8 @@ use std::fs::OpenOptions;
 use anyhow::{Context, Error};
 use clap::Parser;
 use config::CliOptions;
-use tracing::info;
+use tokio::{net::TcpListener, spawn};
+use tracing::{error, info};
 use tracing_subscriber::{Registry, fmt, layer::SubscriberExt};
 
 use connection::{Connection, video::VideoConnection};
@@ -27,33 +28,78 @@ async fn main() -> Result<(), Error> {
         "got version information: hardware {:?}, firmware {}",
         version_info.hardware, version_info.firmware,
     );
-    info!("initializing TCP connection");
 
-    let mut conn = Connection::new(cli_options)
+    info!("setting up TCP server");
+
+    let mut server = Server::new(cli_options, version_info)
         .await
-        .context("error while handling TCP connection")?;
+        .context("could not create new server")?;
 
-    info!("sending out version information");
-
-    conn.send_version_info(version_info)
-        .await
-        .context("could not send out version information")?;
-
-    let stream_config = conn
-        .receive_stream_config()
-        .await
-        .context("could not receive stream config")?;
-
-    info!("received stream config {:?}", &stream_config);
-
-    let mut video_conn = VideoConnection::new(conn, stream_config)
-        .context("could not initialize video connection")?;
-    video_conn.run().await.context("error while streaming")?;
+    server.run().await.context("TCP server stopped")?;
 
     Ok(())
 }
 
-// TODO: since now running as service, needed?
+#[derive(Debug)]
+pub struct Server {
+    listener: TcpListener,
+    version_info: VersionInfo,
+}
+
+impl Server {
+    async fn new(cli_options: CliOptions, version_info: VersionInfo) -> Result<Self, Error> {
+        let listener = TcpListener::bind(&format!("0.0.0.0:{}", cli_options.port))
+            .await
+            .context(format!("could not bind to port {}", cli_options.port))?;
+
+        Ok(Self {
+            listener,
+            version_info,
+        })
+    }
+
+    async fn run(&mut self) -> Result<(), Error> {
+        loop {
+            let (stream, addr) = self
+                .listener
+                .accept()
+                .await
+                .context("error while waiting for a TCP connection")?;
+
+            info!("new connection from {}", addr);
+
+            let conn = Connection::new(stream);
+            let version_info = self.version_info;
+            spawn(async move {
+                if let Err(error) = Self::task(conn, version_info).await {
+                    error!("connection terminated with error {}", error);
+                }
+            });
+        }
+    }
+
+    async fn task(mut conn: Connection, version_info: VersionInfo) -> Result<(), Error> {
+        info!("sending out version information");
+
+        conn.send_version_info(version_info)
+            .await
+            .context("could not send out version information")?;
+
+        let stream_config = conn
+            .receive_stream_config()
+            .await
+            .context("could not receive stream config")?;
+
+        info!("received stream config {:?}", &stream_config);
+
+        let mut video_conn = VideoConnection::new(conn, stream_config)
+            .context("could not initialize video connection")?;
+        video_conn.run().await.context("error while streaming")?;
+
+        Ok(())
+    }
+}
+
 fn initialize_logging() -> Result<(), Error> {
     let log_file = OpenOptions::new()
         .write(true)
