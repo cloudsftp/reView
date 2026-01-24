@@ -21,17 +21,9 @@ async fn main() -> Result<(), Error> {
 
     let cli_options = CliOptions::parse();
 
-    let version_info =
-        VersionInfo::get_from_device().context("could not get version information")?;
-
-    info!(
-        "got version information: hardware {:?}, firmware {}",
-        version_info.hardware, version_info.firmware,
-    );
-
     info!("setting up TCP server");
 
-    let mut server = Server::new(cli_options, version_info)
+    let mut server = Server::new(cli_options)
         .await
         .context("could not create new server")?;
 
@@ -43,19 +35,15 @@ async fn main() -> Result<(), Error> {
 #[derive(Debug)]
 pub struct Server {
     listener: TcpListener,
-    version_info: VersionInfo,
 }
 
 impl Server {
-    async fn new(cli_options: CliOptions, version_info: VersionInfo) -> Result<Self, Error> {
+    async fn new(cli_options: CliOptions) -> Result<Self, Error> {
         let listener = TcpListener::bind(&format!("0.0.0.0:{}", cli_options.port))
             .await
             .context(format!("could not bind to port {}", cli_options.port))?;
 
-        Ok(Self {
-            listener,
-            version_info,
-        })
+        Ok(Self { listener })
     }
 
     async fn run(&mut self) -> Result<(), Error> {
@@ -69,16 +57,23 @@ impl Server {
             info!("new connection from {}", addr);
 
             let conn = Connection::new(stream);
-            let version_info = self.version_info;
             spawn(async move {
-                if let Err(error) = Self::task(conn, version_info).await {
+                if let Err(error) = Self::task(conn).await {
                     error!("connection terminated with error {}", error);
                 }
             });
         }
     }
 
-    async fn task(mut conn: Connection, version_info: VersionInfo) -> Result<(), Error> {
+    async fn task(mut conn: Connection) -> Result<(), Error> {
+        let version_info =
+            VersionInfo::get_from_device().context("could not get version information")?;
+
+        info!(
+            "got version information: hardware {:?}, firmware {}",
+            version_info.hardware, version_info.firmware,
+        );
+
         info!("sending out version information");
 
         conn.send_version_info(version_info)
