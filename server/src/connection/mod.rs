@@ -60,9 +60,14 @@ impl Connection {
             .framed
             .next()
             .await
-            .context("connection closed before stream configuration was sent")?
-            .context("could not message with stream configuration")?
-            .clone();
+            .context(format!(
+                "connection closed before message of type {} was sent",
+                type_name::<T>(),
+            ))?
+            .context(format!(
+                "could not send message of type {}",
+                type_name::<T>()
+            ))?;
 
         let stream_config = serde_json::from_slice(&msg).context(format!(
             "could not deserialize message of type {}",
@@ -79,7 +84,10 @@ impl Connection {
         self.framed
             .send(msg.into())
             .await
-            .context("could not send serialized version information")
+            .context(format!(
+                "could not send serialized message of type {}",
+                type_name::<T>()
+            ))
             .map(|_| ())
     }
 }
