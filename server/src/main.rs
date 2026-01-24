@@ -54,38 +54,24 @@ impl Server {
                 .await
                 .context("error while waiting for a TCP connection")?;
 
+            stream.set_nodelay(true).context("could not set nodelay")?;
+
             info!("new connection from {}", addr);
 
             let conn = Connection::new(stream);
             spawn(async move {
                 if let Err(error) = Self::task(conn).await {
-                    error!("connection terminated with error {}", error);
+                    error!("connection terminated with error {:?}", error);
                 }
             });
         }
     }
 
     async fn task(mut conn: Connection) -> Result<(), Error> {
-        let version_info =
-            VersionInfo::get_from_device().context("could not get version information")?;
-
-        info!(
-            "got version information: hardware {:?}, firmware {}",
-            version_info.hardware, version_info.firmware,
-        );
-
-        info!("sending out version information");
-
-        conn.send_version_info(version_info)
-            .await
-            .context("could not send out version information")?;
-
         let stream_config = conn
-            .receive_stream_config()
+            .exchange_information()
             .await
-            .context("could not receive stream config")?;
-
-        info!("received stream config {:?}", &stream_config);
+            .context("error during initial information exchange")?;
 
         let mut video_conn = VideoConnection::new(conn, stream_config)
             .context("could not initialize video connection")?;

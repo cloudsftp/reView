@@ -1,4 +1,7 @@
-use std::env::{self, VarError};
+use std::{
+    env::{self, VarError},
+    path::PathBuf,
+};
 
 use anyhow::{Context, Error};
 use clap::Parser;
@@ -20,11 +23,10 @@ pub struct CliOptions {
     #[arg(long, name = "tcp-port")]
     tcp_port: Option<u16>,
 
-    /*
     /// Private SSH key file path
     #[arg(long, name = "ssh-key")]
     ssh_key: Option<PathBuf>,
-    */
+
     /// Framerate (default: 50)
     #[arg(long, name = "framerate")]
     framerate: Option<f32>,
@@ -41,7 +43,7 @@ pub struct CliOptions {
 #[derive(Debug, Clone)]
 pub struct ClientOptions {
     pub remarkable_ip: String,
-    //pub ssh_key: PathBuf,
+    pub ssh_key: PathBuf,
     pub dark_mode: bool,
     pub tcp_port: u16,
     pub show_cursor: bool,
@@ -56,7 +58,6 @@ impl From<CliOptions> for ClientOptions {
                 "REMARKABLE_IP",
                 DEFAULT_IP.to_string(),
             ),
-            //ssh_key: must_resolve_option(value.ssh_key, "REMARKABLE_SSH_KEY_PATH"),
             tcp_port: resolve_with(
                 value.tcp_port,
                 "REMARKABLE_TCP_PORT",
@@ -67,6 +68,7 @@ impl From<CliOptions> for ClientOptions {
                 },
                 DEFAULT_TCP_PORT,
             ),
+            ssh_key: must_resolve_option(value.ssh_key, "REMARKABLE_SSH_KEY_PATH"),
             framerate: resolve_with(
                 value.framerate,
                 "REMARKABLE_FRAMERATE",
