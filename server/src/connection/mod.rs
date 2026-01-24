@@ -64,7 +64,7 @@ impl Connection {
             .context("could not message with stream configuration")?
             .clone();
 
-        let stream_config = bson::deserialize_from_slice(&msg).context(format!(
+        let stream_config = serde_json::from_slice(&msg).context(format!(
             "could not deserialize message of type {}",
             type_name::<T>(),
         ))?;
@@ -73,7 +73,7 @@ impl Connection {
     }
 
     pub async fn send<T: Serialize>(&mut self, value: &T) -> Result<(), Error> {
-        let msg = bson::serialize_to_vec(value)
+        let msg = serde_json::to_vec(value)
             .context(format!("could not serialize type {}", type_name::<T>()))?;
 
         self.framed
