@@ -20,4 +20,4 @@ tokio-util = { version = "0.7.18", features = ["codec"] }
 futures = "0.3.31"
 procfs = "0.18.0"
 itertools = "0.14.0"
-ssh-key = { version = "0.6.7", features = ["p256", "p384", "p521", "dsa", "ed25519", "rsa", "serde"] }
+ssh-key = { version = "0.6.7", features = ["p256", "p384", "p521", "dsa", "ed25519", "rsa", "serde", "std"] }
