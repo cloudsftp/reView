@@ -1,7 +1,21 @@
 #+title: reView
 
 Live stream and take snapshots of the contents of your [[https://remarkable.com/][reMarkable tablet]].
-Based on [[https://github.com/rien/reStream][reStream]]
+Based on [[https://github.com/rien/reStream][reStream]].
+
+#+BEGIN_HTML
+<p align="center">
+    <a href="https://remarkable.com/store/remarkable">
+        <img src="https://img.shields.io/badge/reMarkable_1-unsupported-red">
+    </a>
+    <a href="https://remarkable.com/store/remarkable-2">
+        <img src="https://img.shields.io/badge/reMarkable_2-supported-green">
+    </a>
+    <a href="https://remarkable.com/store/remarkable-paper/pro">
+        <img src="https://img.shields.io/badge/reMarkable_Paper_Pro-unsupported-red">
+    </a>
+</p>
+#+END_HTML
 
 Please note that this project is still under heavy development.
 If you run this program, anyone on your network could connect to your reMarkable and stream the contents of your screen.
@@ -10,15 +24,6 @@ If you run this program, anyone on your network could connect to your reMarkable
 <p align="center">
     <a href="https://img.shields.io/badge/Version-v0.1.0-blue">
         <img src="https://img.shields.io/badge/Version-v0.1.0-blue">
-    </a>
-    <a href="https://remarkable.com/store/remarkable">
-        <img src="https://img.shields.io/badge/reMarkable_1-supported-orange">
-    </a>
-    <a href="https://remarkable.com/store/remarkable">
-        <img src="https://img.shields.io/badge/reMarkable_2-supported-green">
-    </a>
-    <a href="https://remarkable.com/store/remarkable">
-        <img src="https://img.shields.io/badge/reMarkable_Paper_Pro-unsupported-red">
     </a>
     <a href="https://github.com/cloudsftp/reView/actions/workflows/compile.yaml">
         <img src="https://github.com/cloudsftp/reView/actions/workflows/compile.yaml/badge.svg">
