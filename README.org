@@ -79,8 +79,6 @@ TODO: Install it as service
 Options for the client can be set as command line options or environment variables.
 Command line options override the environment variables.
 
-Values with no default value in their description have to be set (for example =--ssh-key=).
-
 *** Command Line Options
 
 #+begin_src
@@ -89,6 +87,7 @@ Usage: review-client [OPTIONS]
 Options:
       --remarkable-ip <remarkable-ip>  IP of the reMarkable tablet (default: 10.11.99.1)
       --tcp-port <tcp-port>            TCP port for video stream (default: 6680)
+      --ssh-key <ssh-key>              Private SSH key file path. If not specified, attempting all keys in the SSH directory
       --framerate <framerate>          Framerate (default: 50)
       --dark-mode                      Dark mode - invert colors (default: false)
       --show-cursor                    Show cursor (default: false)
@@ -101,7 +100,7 @@ Options:
 Corresponding keys:
 - =REMARKABLE_IP=
 - =REMARKABLE_TCP_PORT=
-# - =REMARKABLE_SSH_KEY_PATH=
+- =REMARKABLE_SSH_KEY_PATH=
 - =REMARKABLE_FRAMERATE=
 - =REMARKABLE_DARK_MODE=
 - =REMARKABLE_SHOW_CURSOR=

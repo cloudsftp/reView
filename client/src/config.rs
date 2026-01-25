@@ -1,13 +1,14 @@
 use std::{
     env::{self, VarError},
     path::PathBuf,
+    str::FromStr,
 };
 
 use anyhow::{Context, Error};
 use clap::Parser;
+use tracing::trace;
 
 const DEFAULT_IP: &str = "10.11.99.1";
-const DEFAULT_SSH_PORT: u16 = 22;
 const DEFAULT_TCP_PORT: u16 = 6680;
 
 const DEFAULT_FRAMERATE: f32 = 50.;
@@ -23,7 +24,7 @@ pub struct CliOptions {
     #[arg(long, name = "tcp-port")]
     tcp_port: Option<u16>,
 
-    /// Private SSH key file path
+    /// Private SSH key file path. If not specified, attempting all keys in the SSH directory
     #[arg(long, name = "ssh-key")]
     ssh_key: Option<PathBuf>,
 
@@ -43,7 +44,7 @@ pub struct CliOptions {
 #[derive(Debug, Clone)]
 pub struct ClientOptions {
     pub remarkable_ip: String,
-    pub ssh_key: PathBuf,
+    pub ssh_key: Option<PathBuf>,
     pub dark_mode: bool,
     pub tcp_port: u16,
     pub show_cursor: bool,
@@ -68,7 +69,9 @@ impl From<CliOptions> for ClientOptions {
                 },
                 DEFAULT_TCP_PORT,
             ),
-            ssh_key: must_resolve_option(value.ssh_key, "REMARKABLE_SSH_KEY_PATH"),
+            ssh_key: resolve_with_optional(value.ssh_key, "REMARKABLE_SSH_KEY_PATH", |string| {
+                PathBuf::from_str(&string).context("could not parse path of private SSH key")
+            }),
             framerate: resolve_with(
                 value.framerate,
                 "REMARKABLE_FRAMERATE",
@@ -92,10 +95,6 @@ fn resolve_option<T: From<String>>(cli_value: Option<T>, variable_name: &str, de
         |env_value| Ok(env_value.into()),
         default,
     )
-}
-
-fn must_resolve_option<T: From<String>>(cli_value: Option<T>, variable_name: &str) -> T {
-    must_resolve_with(cli_value, variable_name, |env_value| Ok(env_value.into()))
 }
 
 fn resolve_boolean_option(cli_value: bool, variable_name: &str, default: bool) -> bool {
@@ -133,6 +132,10 @@ fn resolve_with<T>(
         return default;
     }
 
+    trace!(
+        "read environment variable '{}': {:?}",
+        variable_name, env_string,
+    );
     parse(env_string.expect(&format!(
         "could not get environment varialbe '{}'",
         variable_name,
@@ -143,21 +146,30 @@ fn resolve_with<T>(
     ))
 }
 
-fn must_resolve_with<T>(
+fn resolve_with_optional<T>(
     cli_value: Option<T>,
     variable_name: &str,
     parse: impl FnOnce(String) -> Result<T, Error>,
-) -> T {
+) -> Option<T> {
     if let Some(cli_value) = cli_value {
-        return cli_value;
+        return Some(cli_value);
     }
 
-    let env_string = env::var(variable_name).expect(&format!(
-        "could not get environment varialbe '{}'",
-        variable_name,
-    ));
-    parse(env_string).expect(&format!(
-        "could not parse environemt variable '{}'",
-        variable_name,
-    ))
+    let env_string = env::var(variable_name);
+    if let Ok(env_string) = env_string {
+        if env_string.is_empty() {
+            return None;
+        }
+
+        trace!(
+            "read environment variable '{}': {}",
+            variable_name, env_string,
+        );
+        return Some(parse(env_string).expect(&format!(
+            "could not parse environemt variable '{}'",
+            variable_name,
+        )));
+    }
+
+    None
 }
