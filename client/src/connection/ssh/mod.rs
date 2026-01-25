@@ -1,11 +1,10 @@
 mod keys;
 
-use anyhow::{Context, Error};
+use anyhow::{Context, Error, anyhow};
 use itertools::Itertools;
-use ssh_encoding::Encode;
-use ssh_key::{PrivateKey, PublicKey};
-use tokio_util::bytes::BytesMut;
-use tracing::info;
+use review_server::connection::ssh::{PublicKeyAndSignature, PublicKeys};
+use ssh_key::{HashAlg, PrivateKey};
+use tracing::{info, warn};
 
 use super::Connection;
 use crate::config::ClientOptions;
@@ -13,13 +12,18 @@ use keys::get_keys_to_check;
 
 impl Connection {
     pub async fn authenticate(&mut self, client_options: ClientOptions) -> Result<(), Error> {
+        let token = self
+            .receive_raw()
+            .await
+            .context("could not receive authentification token")?
+            .to_vec();
+
         let keys_to_check = get_keys_to_check(&client_options.ssh_key)
             .context("could not get private keys to check")?;
-
         info!("found {} private SSH keys to check", keys_to_check.len());
 
         let priv_key = self
-            .find_authorized_key(keys_to_check)
+            .find_authorized_key(keys_to_check, token)
             .await
             .context("could not find an authorized private key")?;
 
@@ -29,22 +33,47 @@ impl Connection {
             priv_key.algorithm(),
         );
 
-        self.sign_request(&priv_key)
-            .await
-            .context("could not sign the requested message")?;
-
         Ok(())
     }
 
     async fn find_authorized_key(
         &mut self,
         keys_to_check: Vec<PrivateKey>,
+        token: Vec<u8>,
     ) -> Result<PrivateKey, Error> {
         let pub_keys_to_check = keys_to_check
             .iter()
-            .map(|priv_key| priv_key.public_key())
-            .cloned()
+            .filter_map(|priv_key| {
+                let pub_key = priv_key.public_key().clone();
+                let signature = match priv_key.sign("review", HashAlg::Sha512, &token) {
+                    Ok(signature) => signature,
+                    Err(err) => {
+                        warn!(
+                            "private key '{}' could not sign authentification token: {:?}",
+                            priv_key.comment(),
+                            err,
+                        );
+                        return None;
+                    }
+                };
+
+                Some((pub_key, signature))
+            })
             .collect_vec();
+
+        if pub_keys_to_check.len() == 0 {
+            return Err(anyhow!(
+                "none of the private SSH keys could sign the authentification token"
+            ));
+        }
+
+        let pub_keys_to_check = PublicKeys {
+            keys_and_signatures: pub_keys_to_check
+                .iter()
+                .map(PublicKeyAndSignature::try_from)
+                .collect::<Result<_, Error>>()
+                .context("could not encode the public keys and signatures")?,
+        };
 
         self.send(&pub_keys_to_check)
             .await
@@ -56,27 +85,5 @@ impl Connection {
             .context("could not receive authorized key index")?;
 
         Ok(keys_to_check[authorized_key_index].clone())
-    }
-
-    async fn sign_request(&mut self, priv_key: &PrivateKey) -> Result<(), Error> {
-        let message = self
-            .receive_raw()
-            .await
-            .context("could not receive message to sign")?
-            .to_vec();
-
-        let signature = priv_key
-            .sign("review", ssh_key::HashAlg::Sha512, &message)
-            .context("could not sign the requested message")?;
-
-        let mut encoded_signature = vec![];
-        signature
-            .encode(&mut encoded_signature)
-            .context("could not encode signature")?;
-        self.send_raw(encoded_signature.into())
-            .await
-            .context("could not send out encoded signature")?;
-
-        Ok(())
     }
 }
