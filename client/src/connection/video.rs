@@ -1,7 +1,7 @@
 use anyhow::{Context, Error};
 use futures::stream::StreamExt;
 use lz4_flex::decompress_size_prepended;
-use tracing::debug;
+use tracing::trace;
 
 use crate::display::Display;
 
@@ -23,7 +23,7 @@ impl VideoConnection {
 
     pub async fn run(&mut self) -> Result<(), Error> {
         loop {
-            debug!("attempting to read data from TCP stream");
+            trace!("attempting to read data from TCP stream");
 
             let compressed_frame = self
                 .conn
@@ -33,7 +33,7 @@ impl VideoConnection {
                 .context("TCP stream was closed")?
                 .context("could not read from TCP stream")?;
 
-            debug!(
+            trace!(
                 "read one compressed frame from TCP stream ({} bytes)",
                 compressed_frame.len(),
             );
@@ -41,7 +41,7 @@ impl VideoConnection {
             let frame = decompress_size_prepended(&compressed_frame)
                 .context("could not decompress received frame")?;
 
-            debug!("decompressed: {} bytes", frame.len());
+            trace!("decompressed: {} bytes", frame.len());
 
             self.display
                 .push_frame(frame)

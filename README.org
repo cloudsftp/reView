@@ -55,7 +55,7 @@ sudo zypper install gstreamer gstreamer-plugins-base gstreamer-plugins-good
 
 ** Server
 
-The must be running.
+The server must be running.
 
 To install it, first build (see later in this document) and then copy it to your reMarkable.
 
