@@ -23,3 +23,4 @@ tokio-util = { version = "0.7.18", features = ["io", "io-util", "codec"] }
 review-server = { path = "../server" }
 futures = "0.3.31"
 ssh-key = { version = "0.6.7", features = ["p256", "p384", "p521", "dsa", "ed25519", "rsa", "serde"] }
+ssh-encoding = { version = "0.2.0", features = ["bytes"] }

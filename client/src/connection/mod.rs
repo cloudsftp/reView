@@ -11,7 +11,10 @@ use review_server::{
 };
 use serde::{Serialize, de::DeserializeOwned};
 use tokio::net::TcpStream;
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use tokio_util::{
+    bytes::{Bytes, BytesMut},
+    codec::{Framed, LengthDelimitedCodec},
+};
 use tracing::info;
 
 use crate::config::ClientOptions;
@@ -79,11 +82,11 @@ impl Connection {
             .next()
             .await
             .context(format!(
-                "connection closed before message of type {} was sent",
+                "connection closed before message of type {} was received",
                 type_name::<T>(),
             ))?
             .context(format!(
-                "could not send message of type {}",
+                "could not receive message of type {}",
                 type_name::<T>()
             ))?;
 
@@ -95,7 +98,15 @@ impl Connection {
         Ok(stream_config)
     }
 
-    pub async fn send<T: Serialize>(&mut self, value: &T) -> Result<(), Error> {
+    async fn receive_raw(&mut self) -> Result<BytesMut, Error> {
+        self.framed
+            .next()
+            .await
+            .context(format!("connection closed before raw message was received",))?
+            .context(format!("could not receive raw message"))
+    }
+
+    async fn send<T: Serialize>(&mut self, value: &T) -> Result<(), Error> {
         let msg = serde_json::to_vec(value)
             .context(format!("could not serialize type {}", type_name::<T>()))?;
 
@@ -106,6 +117,14 @@ impl Connection {
                 "could not send serialized message of type {}",
                 type_name::<T>()
             ))
+            .map(|_| ())
+    }
+
+    async fn send_raw(&mut self, msg: Bytes) -> Result<(), Error> {
+        self.framed
+            .send(msg)
+            .await
+            .context(format!("could not send raw message"))
             .map(|_| ())
     }
 }

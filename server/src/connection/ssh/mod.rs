@@ -1,13 +1,14 @@
 use std::{path::PathBuf, str::FromStr};
 
 use anyhow::{Context, Error};
-use ssh_key::{AuthorizedKeys, PublicKey, authorized_keys::Entry};
+use ssh_encoding::{Decode, Reader};
+use ssh_key::{AuthorizedKeys, PublicKey, SshSig, authorized_keys::Entry};
 use tracing::debug;
 
 use super::Connection;
 
 impl Connection {
-    pub async fn authenticate(&mut self) -> Result<(), Error> {
+    pub async fn authenticate(&mut self) -> Result<PublicKey, Error> {
         let pub_key = self
             .find_authorized_key()
             .await
@@ -15,7 +16,11 @@ impl Connection {
 
         debug!("received public SSH key: {:?}", pub_key);
 
-        Ok(())
+        self.request_signature(&pub_key)
+            .await
+            .context("could not get signature from client")?;
+
+        Ok(pub_key)
     }
 
     async fn find_authorized_key(&mut self) -> Result<PublicKey, Error> {
@@ -40,6 +45,28 @@ impl Connection {
             .context("could not send index of authorized key")?;
 
         Ok(pub_keys[authorized_key_index].clone())
+    }
+
+    async fn request_signature(&mut self, pub_key: &PublicKey) -> Result<(), Error> {
+        let message: [u8; 128] = rand::random();
+        self.send_raw(message.to_vec().into())
+            .await
+            .context("could not send message to sign")?;
+
+        let encoded_signature = self
+            .receive_raw()
+            .await
+            .context("culd not get signed message back")?
+            .to_vec();
+        let mut encoded_signature = encoded_signature.as_slice();
+        let signature =
+            SshSig::decode(&mut encoded_signature).context("could not decode signature")?;
+
+        pub_key
+            .verify("review", &message, &signature)
+            .context("could not verify signature")?;
+
+        Ok(())
     }
 }
 
