@@ -4,7 +4,7 @@ use anyhow::{Context, Error, anyhow};
 use itertools::Itertools;
 use review_server::connection::ssh::{PublicKeyAndSignature, PublicKeys};
 use ssh_key::{HashAlg, PrivateKey};
-use tracing::{info, warn};
+use tracing::{debug, error, info, warn};
 
 use super::Connection;
 use crate::config::ClientOptions;
@@ -56,6 +56,12 @@ impl Connection {
                         return None;
                     }
                 };
+
+                debug!("token (length: {}), {:?}", token.len(), token);
+                if let Err(err) = pub_key.verify("review", &token, &signature) {
+                    error!("problem verifying signature: {:?}", err);
+                }
+                debug!("public key {} successfully signed token", pub_key.comment());
 
                 Some((pub_key, signature))
             })

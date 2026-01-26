@@ -3,12 +3,11 @@ use std::{path::PathBuf, str::FromStr};
 use anyhow::{Context, Error};
 use serde::{Deserialize, Serialize};
 use ssh_encoding::{Decode, Encode};
-use ssh_key::{AuthorizedKeys, PublicKey, Signature, SshSig, authorized_keys::Entry};
+use ssh_key::{AuthorizedKeys, PublicKey, SshSig, authorized_keys::Entry};
 use tracing::debug;
 
 use super::Connection;
 
-// use later when switching to bson
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthentificationToken {
     pub token: Vec<u8>,
@@ -95,12 +94,12 @@ impl Connection {
             .collect::<Result<Vec<_>, Error>>()
             .context("could not parse public keys and signatures")?;
 
-        let authorized_key_index = keys_and_signatures
+        let (authorized_key_index, pub_key) = keys_and_signatures
             .iter()
             .enumerate()
-            .filter_map(|(index, (pub_key, signature))| {
-                is_key_authorized_and_authentic(pub_key, token, signature, &authorized_keys)
-                    .then_some(index)
+            .filter_map(|(index, (_, signature))| {
+                get_authorized_key_matching_signature(token, signature, &authorized_keys)
+                    .map(|pub_key| (index, pub_key))
             })
             .next()
             .context("none of the provided public keys is authorized")?;
@@ -109,23 +108,28 @@ impl Connection {
             .await
             .context("could not send index of authorized key")?;
 
-        Ok(keys_and_signatures[authorized_key_index].0.clone())
+        Ok(pub_key)
     }
 }
 
-fn is_key_authorized_and_authentic(
-    pub_key: &PublicKey,
+fn get_authorized_key_matching_signature(
     token: &Vec<u8>,
     signature: &SshSig,
     authorized_keys: &Vec<Entry>,
-) -> bool {
-    let authorized = authorized_keys
+) -> Option<PublicKey> {
+    authorized_keys
         .iter()
-        .any(|authorized_key| authorized_key.public_key() == pub_key);
-
-    let authentic = pub_key.verify("review", token, signature).is_ok();
-
-    authorized && authentic
+        .filter_map(|entry| {
+            let pub_key = entry.public_key();
+            debug!("public key: {:?}, signature: {:?}", pub_key, signature);
+            debug!("token (length: {}), {:?}", token.len(), token);
+            pub_key
+                .verify("review", token, signature)
+                .ok()
+                .map(|_| pub_key)
+        })
+        .cloned()
+        .next()
 }
 
 fn get_authorized_keys() -> Result<Vec<Entry>, Error> {
