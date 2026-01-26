@@ -2,7 +2,9 @@ mod keys;
 
 use anyhow::{Context, Error, anyhow};
 use itertools::Itertools;
-use review_server::connection::ssh::{AuthentificationToken, PublicKeyAndSignature, PublicKeys};
+use review_server::connection::ssh::{
+    AuthentificationToken, AuthorizedPublicKey, PublicKeyAndSignature, PublicKeys,
+};
 use ssh_key::{HashAlg, PrivateKey};
 use tracing::{debug, error, info, warn};
 
@@ -84,11 +86,11 @@ impl Connection {
             .await
             .context("could not send over all public keys to check")?;
 
-        let authorized_key_index: usize = self
+        let authorized_key: AuthorizedPublicKey = self
             .receive()
             .await
             .context("could not receive authorized key index")?;
 
-        Ok(keys_to_check[authorized_key_index].clone())
+        Ok(keys_to_check[authorized_key.index].clone())
     }
 }

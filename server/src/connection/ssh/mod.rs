@@ -60,6 +60,11 @@ impl TryInto<(PublicKey, SshSig)> for &PublicKeyAndSignature {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AuthorizedPublicKey {
+    pub index: usize,
+}
+
 impl Connection {
     pub async fn authenticate(&mut self) -> Result<PublicKey, Error> {
         let token: [u8; 128] = rand::random();
@@ -104,7 +109,11 @@ impl Connection {
             .next()
             .context("none of the provided public keys is authorized")?;
 
-        self.send(&authorized_key_index)
+        let authorized_key_message = AuthorizedPublicKey {
+            index: authorized_key_index,
+        };
+
+        self.send(&authorized_key_message)
             .await
             .context("could not send index of authorized key")?;
 
