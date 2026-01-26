@@ -2,7 +2,7 @@ mod keys;
 
 use anyhow::{Context, Error, anyhow};
 use itertools::Itertools;
-use review_server::connection::ssh::{PublicKeyAndSignature, PublicKeys};
+use review_server::connection::ssh::{AuthentificationToken, PublicKeyAndSignature, PublicKeys};
 use ssh_key::{HashAlg, PrivateKey};
 use tracing::{debug, error, info, warn};
 
@@ -12,18 +12,17 @@ use keys::get_keys_to_check;
 
 impl Connection {
     pub async fn authenticate(&mut self, client_options: ClientOptions) -> Result<(), Error> {
-        let token = self
-            .receive_raw()
+        let token: AuthentificationToken = self
+            .receive()
             .await
-            .context("could not receive authentification token")?
-            .to_vec();
+            .context("could not receive authentification token")?;
 
         let keys_to_check = get_keys_to_check(&client_options.ssh_key)
             .context("could not get private keys to check")?;
         info!("found {} private SSH keys to check", keys_to_check.len());
 
         let priv_key = self
-            .find_authorized_key(keys_to_check, token)
+            .find_authorized_key(keys_to_check, token.token)
             .await
             .context("could not find an authorized private key")?;
 
