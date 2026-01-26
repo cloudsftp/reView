@@ -18,7 +18,11 @@ Based on [[https://github.com/rien/reStream][reStream]].
 #+END_HTML
 
 Please note that this project is still under heavy development.
-If you run this program, anyone on your network could connect to your reMarkable and stream the contents of your screen.
+The server will open a port (6680 per default) on your reMarkable tablet.
+It authorizes incoming connections based via SSH.
+I am not a cybersecurity expert, please DON'T rely on the correctnes of the implementation.
+Also, the content of the connection is NOT encrypted.
+Refer to the SSH section.
 
 #+BEGIN_HTML
 <p align="center">
@@ -31,9 +35,11 @@ If you run this program, anyone on your network could connect to your reMarkable
 </p>
 #+END_HTML
 
-* Dependencies
+* Prequisites
 
 You need
+
+- A private SSH key that was authorized by the reMarkable (=ssh-copy-id=)
 
 - Gstreamer
 - Gstreamer Plugins Base
@@ -139,3 +145,16 @@ dagger call build-server --source . export --path review-server.arm.static
 sudo zypper in gstreamer-devel gstreamer-plugins-base-devel
 #+end_src
 
+* SSH
+
+SSH is only used for authorization, not encryption.
+
+** Authentification
+
+1. The server send a randomly generated 128 byte authorization token to the client.
+2. The client signs this token with either the explicitly specified private SSH key,
+   or all the private SSH keys in the default SSH directory (=~/.ssh=).
+   Then it sends the signatures to the server.
+3. The server verifies each one of the signatures with each authorized keys in the default authorized keys file (=/home/root/.ssh/authorized_keys=), until one of the authorized keys matches the signature.
+
+You can explicitly set the private SSH key to be used via a command line option or an environment variable.
