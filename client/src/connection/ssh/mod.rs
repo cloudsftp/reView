@@ -3,10 +3,10 @@ mod keys;
 use anyhow::{Context, Error, anyhow};
 use itertools::Itertools;
 use review_server::connection::ssh::{
-    AuthentificationToken, AuthorizedPublicKey, PublicKeyAndSignature, PublicKeys,
+    AuthentificationToken, AuthorizedPublicKey, SIGNATURE_NAMESPACE, Signatures,
 };
 use ssh_key::{HashAlg, PrivateKey};
-use tracing::{debug, error, info, warn};
+use tracing::{info, warn};
 
 use super::Connection;
 use crate::config::ClientOptions;
@@ -42,47 +42,32 @@ impl Connection {
         keys_to_check: Vec<PrivateKey>,
         token: Vec<u8>,
     ) -> Result<PrivateKey, Error> {
-        let pub_keys_to_check = keys_to_check
+        let signatures = keys_to_check
             .iter()
             .filter_map(|priv_key| {
-                let pub_key = priv_key.public_key().clone();
-                let signature = match priv_key.sign("review", HashAlg::Sha512, &token) {
-                    Ok(signature) => signature,
+                match priv_key.sign(SIGNATURE_NAMESPACE, HashAlg::Sha512, &token) {
+                    Ok(signature) => Some(signature),
                     Err(err) => {
                         warn!(
                             "private key '{}' could not sign authentification token: {:?}",
                             priv_key.comment(),
                             err,
                         );
-                        return None;
+                        None
                     }
-                };
-
-                debug!("token (length: {}), {:?}", token.len(), token);
-                if let Err(err) = pub_key.verify("review", &token, &signature) {
-                    error!("problem verifying signature: {:?}", err);
                 }
-                debug!("public key {} successfully signed token", pub_key.comment());
-
-                Some((pub_key, signature))
             })
             .collect_vec();
 
-        if pub_keys_to_check.len() == 0 {
+        if signatures.len() == 0 {
             return Err(anyhow!(
                 "none of the private SSH keys could sign the authentification token"
             ));
         }
 
-        let pub_keys_to_check = PublicKeys {
-            keys_and_signatures: pub_keys_to_check
-                .iter()
-                .map(PublicKeyAndSignature::try_from)
-                .collect::<Result<_, Error>>()
-                .context("could not encode the public keys and signatures")?,
-        };
+        let signatures: Signatures = signatures.try_into()?;
 
-        self.send(&pub_keys_to_check)
+        self.send(&signatures)
             .await
             .context("could not send over all public keys to check")?;
 
