@@ -27,11 +27,9 @@ impl VideoConnection {
 
             let compressed_frame = self
                 .conn
-                .framed
-                .next()
+                .receive_raw()
                 .await
-                .context("TCP stream was closed")?
-                .context("could not read from TCP stream")?;
+                .context("could not reveive next frame")?;
 
             trace!(
                 "read one compressed frame from TCP stream ({} bytes)",

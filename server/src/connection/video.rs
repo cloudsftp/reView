@@ -49,10 +49,9 @@ impl VideoConnection {
             );
 
             self.conn
-                .framed
-                .send(encoded_buffer.into())
+                .send_raw(encoded_buffer.into())
                 .await
-                .context("could not write frame to the stream")?;
+                .context("could not send next frame")?;
 
             debug!("wrote the data to the output stream");
         }
