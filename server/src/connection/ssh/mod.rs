@@ -122,8 +122,7 @@ fn get_authorized_key_matching_signature(
                 .ok()
                 .map(|_| pub_key)
         })
-        .cloned()
-        .next()
+        .next().cloned()
 }
 
 fn get_authorized_keys() -> Result<Vec<Entry>, Error> {

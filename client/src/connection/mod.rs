@@ -102,8 +102,8 @@ impl Connection {
         self.framed
             .next()
             .await
-            .context(format!("connection closed before raw message was received",))?
-            .context(format!("could not receive raw message"))
+            .context("connection closed before raw message was received".to_string())?
+            .context("could not receive raw message".to_string())
     }
 
     async fn send<T: Serialize>(&mut self, value: &T) -> Result<(), Error> {
@@ -124,7 +124,7 @@ impl Connection {
         self.framed
             .send(msg)
             .await
-            .context(format!("could not send raw message"))
+            .context("could not send raw message".to_string())
             .map(|_| ())
     }
 }

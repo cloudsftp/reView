@@ -59,7 +59,7 @@ impl Connection {
             })
             .collect_vec();
 
-        if signatures.len() == 0 {
+        if signatures.is_empty() {
             return Err(anyhow!(
                 "none of the private SSH keys could sign the authentification token"
             ));

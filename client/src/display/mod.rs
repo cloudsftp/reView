@@ -1,12 +1,9 @@
-use super::config::*;
 
-use std::{io::Read as _, thread::sleep, time::Duration};
 
 use anyhow::{Context, Error};
 use gstreamer_app::AppSrc;
 use gstreamer_video::VideoFormat;
 use review_server::config::device::{PixelFormat, VideoConfig};
-use tracing::{debug, info};
 
 use gstreamer::{Pipeline, prelude::*};
 

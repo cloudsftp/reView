@@ -1,9 +1,7 @@
 use std::fs::File;
 
 use anyhow::{Context, Error, anyhow};
-use itertools::Itertools;
 use procfs::process::{MMapPath, MemoryMap, Process, all_processes};
-use tracing::trace;
 
 pub fn get_xochitl_memory_file() -> Result<(File, usize), Error> {
     let process = get_process().context("could not get xochitl process")?;
@@ -47,7 +45,7 @@ fn get_framebuffer_offset_in_process_memory(process: &Process) -> Result<usize, 
 
     let framebuffer_map = maps.next().expect("found no framebuffer map");
 
-    if let Some(_) = maps.filter(matches_path_name).next() {
+    if maps.find(matches_path_name).is_some() {
         return Err(anyhow!("found more than one framebuffer map"));
     }
 

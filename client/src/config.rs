@@ -136,14 +136,10 @@ fn resolve_with<T>(
         "read environment variable '{}': {:?}",
         variable_name, env_string,
     );
-    parse(env_string.expect(&format!(
-        "could not get environment varialbe '{}'",
-        variable_name,
-    )))
-    .expect(&format!(
-        "could not parse environemt variable '{}'",
-        variable_name,
-    ))
+    parse(env_string.unwrap_or_else(|_| panic!("could not get environment varialbe '{}'",
+        variable_name)))
+    .unwrap_or_else(|_| panic!("could not parse environemt variable '{}'",
+        variable_name))
 }
 
 fn resolve_with_optional<T>(
@@ -165,10 +161,8 @@ fn resolve_with_optional<T>(
             "read environment variable '{}': {}",
             variable_name, env_string,
         );
-        return Some(parse(env_string).expect(&format!(
-            "could not parse environemt variable '{}'",
-            variable_name,
-        )));
+        return Some(parse(env_string).unwrap_or_else(|_| panic!("could not parse environemt variable '{}'",
+            variable_name)));
     }
 
     None
