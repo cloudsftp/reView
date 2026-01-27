@@ -1,6 +1,7 @@
 use std::{path::PathBuf, str::FromStr};
 
 use anyhow::{Context, Error};
+use rand::{Rng, SeedableRng, rngs::StdRng};
 use serde::{Deserialize, Serialize};
 use ssh_encoding::{Decode, Encode};
 use ssh_key::{AuthorizedKeys, PublicKey, SshSig, authorized_keys::Entry};
@@ -12,6 +13,18 @@ pub const SIGNATURE_NAMESPACE: &str = "review";
 #[derive(Debug, Serialize, Deserialize)]
 pub struct AuthentificationToken {
     pub token: Vec<u8>,
+}
+
+const TOKEN_SIZE: usize = 256;
+
+impl AuthentificationToken {
+    fn new() -> Self {
+        let mut rng = StdRng::from_os_rng();
+        let token: [u8; TOKEN_SIZE] = rng.random();
+        let token = token.to_vec();
+
+        Self { token }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -60,12 +73,8 @@ pub struct AuthorizedPublicKey {
 
 impl Connection {
     pub async fn authenticate(&mut self) -> Result<PublicKey, Error> {
-        let token: [u8; 128] = rand::random();
-        let token = token.to_vec();
-        let token_message = AuthentificationToken {
-            token: token.clone(),
-        };
-        self.send(&token_message)
+        let token = AuthentificationToken::new();
+        self.send(&token)
             .await
             .context("could not send authentification token to client")?;
 
@@ -77,7 +86,10 @@ impl Connection {
         Ok(pub_key)
     }
 
-    async fn find_authorized_key(&mut self, token: &Vec<u8>) -> Result<PublicKey, Error> {
+    async fn find_authorized_key(
+        &mut self,
+        token: &AuthentificationToken,
+    ) -> Result<PublicKey, Error> {
         let authorized_keys = get_authorized_keys().context("could not get authorized keys")?;
 
         let signatures: Signatures = self
@@ -109,7 +121,7 @@ impl Connection {
 }
 
 fn get_authorized_key_matching_signature(
-    token: &Vec<u8>,
+    token: &AuthentificationToken,
     signature: &SshSig,
     authorized_keys: &Vec<Entry>,
 ) -> Option<PublicKey> {
@@ -118,11 +130,12 @@ fn get_authorized_key_matching_signature(
         .filter_map(|entry| {
             let pub_key = entry.public_key();
             pub_key
-                .verify(SIGNATURE_NAMESPACE, token, signature)
+                .verify(SIGNATURE_NAMESPACE, &token.token, signature)
                 .ok()
                 .map(|_| pub_key)
         })
-        .next().cloned()
+        .next()
+        .cloned()
 }
 
 fn get_authorized_keys() -> Result<Vec<Entry>, Error> {
