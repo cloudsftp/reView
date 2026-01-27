@@ -46,9 +46,11 @@ pub fn get_keys_to_check(private_key_path: &Option<PathBuf>) -> Result<Vec<Priva
             let private_key = load_private_key(&path)
                 .map_err(|err| {
                     let filename = path.file_name()?.to_string_lossy();
-                    if !(path.ends_with(".pub")
+                    if !(filename.ends_with(".pub")
+                        || filename.ends_with(".old")
                         || &filename == "known_hosts"
-                        || &filename == "authorized_keys")
+                        || &filename == "authorized_keys"
+                        || &filename == "config")
                     {
                         warn!(
                             "could not load private key {}: {:?}",
