@@ -42,6 +42,10 @@ impl Connection {
         keys_to_check: Vec<PrivateKey>,
         token: Vec<u8>,
     ) -> Result<PrivateKey, Error> {
+        if keys_to_check.is_empty() {
+            return Err(anyhow!("no private SSH keys to authenticate with"));
+        }
+
         let signatures = keys_to_check
             .iter()
             .filter_map(|priv_key| {
@@ -61,7 +65,7 @@ impl Connection {
 
         if signatures.is_empty() {
             return Err(anyhow!(
-                "none of the private SSH keys could sign the authentification token"
+                "none of the private SSH keys could sign the authentification token",
             ));
         }
 
