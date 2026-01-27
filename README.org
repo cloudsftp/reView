@@ -39,7 +39,8 @@ Refer to the SSH section.
 
 You need
 
-- A private SSH key that was authorized by the reMarkable (=ssh-copy-id=)
+- A private SSH key that was authorized by the reMarkable.
+  Follow [[https://remarkable.guide/guide/access/ssh.html#ssh-access][this]] manual.
 
 - Gstreamer
 - Gstreamer Plugins Base
