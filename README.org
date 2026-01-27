@@ -73,13 +73,18 @@ scp review-server.arm.static root@${REMARKABLE_IP}:review-server
 And then start it manually.
 
 #+begin_src shell
-ssh root@${REMARKABLE_IP} 'RUST_LOG=trace ./review-server --port 6680'
+ssh root@${REMARKABLE_IP}
+RUST_LOG=trace ./review-server
 #+end_src
 
-Note: server does not exit when you abort the SSH command above.
-Consider running the server in a SSH session.
+Note: server does not exit when you run it as an SSH command directly and then abort it with Control+C.
 
-TODO: Install it as service
+You can also install it as a service.
+
+#+begin_src shell
+scp review.service root@${REMARKABLE_IP}:/etc/systemd/system
+ssh root@${REMARKABLE_IP} 'systemctl enable --now review'
+#+end_src
 
 ** Client
 

@@ -1,0 +1,15 @@
+[Unit]
+Description=reView server
+After=dbus.service multi-user.target
+Requires=dbus.service
+
+[Service]
+Type=dbus
+BusName=no.remarkable.review
+ExecStart=/home/root/review-server
+User=root
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
