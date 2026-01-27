@@ -41,7 +41,7 @@ impl Connection {
         Ok(Connection { framed })
     }
 
-    pub async fn exchange_information(
+    pub async fn initialize_communication(
         &mut self,
         client_options: ClientOptions,
     ) -> Result<DeviceConfig, Error> {

@@ -27,9 +27,9 @@ async fn main() -> Result<(), Error> {
         .context("could not initialize TCP connection")?;
 
     let device_config = conn
-        .exchange_information(client_options.clone())
+        .initialize_communication(client_options.clone())
         .await
-        .context("error during initial information exchange")?;
+        .context("error during initializing the communication")?;
 
     let mut video_connection = VideoConnection::new(conn, device_config.video_config)
         .context("could not initialize video connection")?;

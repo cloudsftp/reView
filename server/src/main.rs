@@ -69,9 +69,9 @@ impl Server {
 
     async fn task(mut conn: Connection) -> Result<(), Error> {
         let stream_config = conn
-            .exchange_information()
+            .initialize_communication()
             .await
-            .context("error during initial information exchange")?;
+            .context("error during initializing the communication")?;
 
         let mut video_conn = VideoConnection::new(conn, stream_config)
             .context("could not initialize video connection")?;

@@ -1,5 +1,4 @@
 use anyhow::{Context, Error};
-use futures::stream::StreamExt;
 use lz4_flex::decompress_size_prepended;
 use tracing::trace;
 

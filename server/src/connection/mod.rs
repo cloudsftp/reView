@@ -26,7 +26,7 @@ impl Connection {
         Connection { framed }
     }
 
-    pub async fn exchange_information(&mut self) -> Result<StreamConfig, Error> {
+    pub async fn initialize_communication(&mut self) -> Result<StreamConfig, Error> {
         self.authenticate()
             .await
             .context("error while authenticating client")?;
