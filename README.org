@@ -19,10 +19,10 @@ Based on [[https://github.com/rien/reStream][reStream]].
 
 Please note that this project is still under heavy development.
 The server will open a port (6680 per default) on your reMarkable tablet.
-It authorizes incoming connections based via SSH.
-I am not a cybersecurity expert, please DON'T rely on the correctnes of the implementation.
+It authorizes incoming connections via SSH.
+I am no cybersecurity expert, so please DON'T rely on the correctnes of the implementation.
 Also, the content of the connection is NOT encrypted.
-Refer to the SSH section.
+Please refer to the SSH section for further details.
 
 #+BEGIN_HTML
 <p align="center">
@@ -155,7 +155,7 @@ SSH is only used for authorization, not encryption.
 
 ** Authentification
 
-1. The server send a randomly generated 128 byte authorization token to the client.
+1. The server send a randomly generated 256 byte authorization token to the client.
 2. The client signs this token with either the explicitly specified private SSH key,
    or all the private SSH keys in the default SSH directory (=~/.ssh=).
    Then it sends the signatures to the server.
