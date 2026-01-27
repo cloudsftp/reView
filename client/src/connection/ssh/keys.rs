@@ -2,7 +2,7 @@ use std::{env::home_dir, fs::read_to_string, path::PathBuf};
 
 use anyhow::{Context, Error, anyhow};
 use ssh_key::PrivateKey;
-use tracing::{debug, trace};
+use tracing::{debug, trace, warn};
 
 pub fn get_keys_to_check(private_key_path: &Option<PathBuf>) -> Result<Vec<PrivateKey>, Error> {
     if let Some(private_key_path) = private_key_path {
@@ -43,7 +43,23 @@ pub fn get_keys_to_check(private_key_path: &Option<PathBuf>) -> Result<Vec<Priva
                 "attemting to parse {} as a private SSH key",
                 path.to_string_lossy()
             );
-            let private_key = load_private_key(&path).ok()?;
+            let private_key = load_private_key(&path)
+                .map_err(|err| {
+                    let filename = path.file_name()?.to_string_lossy();
+                    if !(path.ends_with(".pub")
+                        || &filename == "known_hosts"
+                        || &filename == "authorized_keys")
+                    {
+                        warn!(
+                            "could not load private key {}: {:?}",
+                            path.to_string_lossy(),
+                            err,
+                        )
+                    };
+
+                    Some(())
+                })
+                .ok()?;
             trace!(
                 "successfully parsed {} as a private SSH key",
                 path.to_string_lossy()
