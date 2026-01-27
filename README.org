@@ -37,10 +37,13 @@ Please refer to the SSH section for further details.
 
 * Prequisites
 
-You need
+On the reMarkable you need
 
-- A private SSH key that was authorized by the reMarkable.
-  Follow [[https://remarkable.guide/guide/access/ssh.html#ssh-access][this]] manual.
+- The server installed and running as a service or manually.
+  Please refer to the Usage section for setup instructions.
+- An authorized public SSH key. Please follow [[https://remarkable.guide/guide/access/ssh.html#ssh-access][this]] manual.
+
+On your PC you need
 
 - Gstreamer
 - Gstreamer Plugins Base
