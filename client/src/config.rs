@@ -1,10 +1,14 @@
-use std::env::{self, VarError};
+use std::{
+    env::{self, VarError},
+    path::PathBuf,
+    str::FromStr,
+};
 
 use anyhow::{Context, Error};
 use clap::Parser;
+use tracing::trace;
 
 const DEFAULT_IP: &str = "10.11.99.1";
-const DEFAULT_SSH_PORT: u16 = 22;
 const DEFAULT_TCP_PORT: u16 = 6680;
 
 const DEFAULT_FRAMERATE: f32 = 50.;
@@ -20,18 +24,17 @@ pub struct CliOptions {
     #[arg(long, name = "tcp-port")]
     tcp_port: Option<u16>,
 
-    /*
-    /// Private SSH key file path
+    /// Private SSH key file path. If not specified, attempting all keys in the SSH directory
     #[arg(long, name = "ssh-key")]
     ssh_key: Option<PathBuf>,
-    */
+
     /// Framerate (default: 50)
     #[arg(long, name = "framerate")]
     framerate: Option<f32>,
 
     /// Dark mode - invert colors (default: false)
-    #[arg(long, name = "dark-mode")]
-    dark_mode: bool,
+    //#[arg(long, name = "dark-mode")]
+    //dark_mode: bool,
 
     /// Show cursor (default: false)
     #[arg(long, name = "show-cursor")]
@@ -41,8 +44,9 @@ pub struct CliOptions {
 #[derive(Debug, Clone)]
 pub struct ClientOptions {
     pub remarkable_ip: String,
-    //pub ssh_key: PathBuf,
-    pub dark_mode: bool,
+    pub ssh_key: Option<PathBuf>,
+    // TODO: implement dark mode
+    // pub dark_mode: bool,
     pub tcp_port: u16,
     pub show_cursor: bool,
     pub framerate: f32,
@@ -56,7 +60,6 @@ impl From<CliOptions> for ClientOptions {
                 "REMARKABLE_IP",
                 DEFAULT_IP.to_string(),
             ),
-            //ssh_key: must_resolve_option(value.ssh_key, "REMARKABLE_SSH_KEY_PATH"),
             tcp_port: resolve_with(
                 value.tcp_port,
                 "REMARKABLE_TCP_PORT",
@@ -67,6 +70,9 @@ impl From<CliOptions> for ClientOptions {
                 },
                 DEFAULT_TCP_PORT,
             ),
+            ssh_key: resolve_with_optional(value.ssh_key, "REMARKABLE_SSH_KEY_PATH", |string| {
+                PathBuf::from_str(&string).context("could not parse path of private SSH key")
+            }),
             framerate: resolve_with(
                 value.framerate,
                 "REMARKABLE_FRAMERATE",
@@ -77,7 +83,7 @@ impl From<CliOptions> for ClientOptions {
                 },
                 DEFAULT_FRAMERATE,
             ),
-            dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
+            //dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
             show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),
         }
     }
@@ -90,10 +96,6 @@ fn resolve_option<T: From<String>>(cli_value: Option<T>, variable_name: &str, de
         |env_value| Ok(env_value.into()),
         default,
     )
-}
-
-fn must_resolve_option<T: From<String>>(cli_value: Option<T>, variable_name: &str) -> T {
-    must_resolve_with(cli_value, variable_name, |env_value| Ok(env_value.into()))
 }
 
 fn resolve_boolean_option(cli_value: bool, variable_name: &str, default: bool) -> bool {
@@ -131,31 +133,40 @@ fn resolve_with<T>(
         return default;
     }
 
-    parse(env_string.expect(&format!(
-        "could not get environment varialbe '{}'",
-        variable_name,
-    )))
-    .expect(&format!(
-        "could not parse environemt variable '{}'",
-        variable_name,
-    ))
+    trace!(
+        "read environment variable '{}': {:?}",
+        variable_name, env_string,
+    );
+    parse(
+        env_string
+            .unwrap_or_else(|_| panic!("could not get environment varialbe '{}'", variable_name)),
+    )
+    .unwrap_or_else(|_| panic!("could not parse environemt variable '{}'", variable_name))
 }
 
-fn must_resolve_with<T>(
+fn resolve_with_optional<T>(
     cli_value: Option<T>,
     variable_name: &str,
     parse: impl FnOnce(String) -> Result<T, Error>,
-) -> T {
+) -> Option<T> {
     if let Some(cli_value) = cli_value {
-        return cli_value;
+        return Some(cli_value);
     }
 
-    let env_string = env::var(variable_name).expect(&format!(
-        "could not get environment varialbe '{}'",
-        variable_name,
-    ));
-    parse(env_string).expect(&format!(
-        "could not parse environemt variable '{}'",
-        variable_name,
-    ))
+    let env_string = env::var(variable_name);
+    if let Ok(env_string) = env_string {
+        if env_string.is_empty() {
+            return None;
+        }
+
+        trace!(
+            "read environment variable '{}': {}",
+            variable_name, env_string,
+        );
+        return Some(parse(env_string).unwrap_or_else(|_| {
+            panic!("could not parse environemt variable '{}'", variable_name)
+        }));
+    }
+
+    None
 }

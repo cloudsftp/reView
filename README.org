@@ -1,9 +1,28 @@
-#+title: Readme
+#+title: reView
 
-Based on [[https://github.com/rien/reStream][reStream]]
+Live stream and take snapshots of the contents of your [[https://remarkable.com/][reMarkable tablet]].
+Based on [[https://github.com/rien/reStream][reStream]].
+
+#+BEGIN_HTML
+<p align="center">
+    <a href="https://remarkable.com/store/remarkable">
+        <img src="https://img.shields.io/badge/reMarkable_1-unsupported-red">
+    </a>
+    <a href="https://remarkable.com/store/remarkable-2">
+        <img src="https://img.shields.io/badge/reMarkable_2-supported-green">
+    </a>
+    <a href="https://remarkable.com/store/remarkable-paper/pro">
+        <img src="https://img.shields.io/badge/reMarkable_Paper_Pro-unsupported-red">
+    </a>
+</p>
+#+END_HTML
 
 Please note that this project is still under heavy development.
-If you run this program, anyone on your network could connect to your reMarkable and stream the contents of your screen.
+The server will open a port (6680 per default) on your reMarkable tablet.
+It authorizes incoming connections based via SSH.
+I am not a cybersecurity expert, please DON'T rely on the correctnes of the implementation.
+Also, the content of the connection is NOT encrypted.
+Refer to the SSH section.
 
 #+BEGIN_HTML
 <p align="center">
@@ -16,9 +35,12 @@ If you run this program, anyone on your network could connect to your reMarkable
 </p>
 #+END_HTML
 
-* Dependencies
+* Prequisites
 
 You need
+
+- A private SSH key that was authorized by the reMarkable.
+  Follow [[https://remarkable.guide/guide/access/ssh.html#ssh-access][this]] manual.
 
 - Gstreamer
 - Gstreamer Plugins Base
@@ -40,7 +62,7 @@ sudo zypper install gstreamer gstreamer-plugins-base gstreamer-plugins-good
 
 ** Server
 
-The must be running.
+The server must be running.
 
 To install it, first build (see later in this document) and then copy it to your reMarkable.
 
@@ -64,8 +86,6 @@ TODO: Install it as service
 Options for the client can be set as command line options or environment variables.
 Command line options override the environment variables.
 
-Values with no default value in their description have to be set (for example =--ssh-key=).
-
 *** Command Line Options
 
 #+begin_src
@@ -74,8 +94,8 @@ Usage: review-client [OPTIONS]
 Options:
       --remarkable-ip <remarkable-ip>  IP of the reMarkable tablet (default: 10.11.99.1)
       --tcp-port <tcp-port>            TCP port for video stream (default: 6680)
+      --ssh-key <ssh-key>              Private SSH key file path. If not specified, attempting all keys in the SSH directory
       --framerate <framerate>          Framerate (default: 50)
-      --dark-mode                      Dark mode - invert colors (default: false)
       --show-cursor                    Show cursor (default: false)
   -h, --help                           Print help
   -V, --version                        Print version
@@ -86,9 +106,8 @@ Options:
 Corresponding keys:
 - =REMARKABLE_IP=
 - =REMARKABLE_TCP_PORT=
-# - =REMARKABLE_SSH_KEY_PATH=
+- =REMARKABLE_SSH_KEY_PATH=
 - =REMARKABLE_FRAMERATE=
-- =REMARKABLE_DARK_MODE=
 - =REMARKABLE_SHOW_CURSOR=
 
 * Building
@@ -125,3 +144,16 @@ dagger call build-server --source . export --path review-server.arm.static
 sudo zypper in gstreamer-devel gstreamer-plugins-base-devel
 #+end_src
 
+* SSH
+
+SSH is only used for authorization, not encryption.
+
+** Authentification
+
+1. The server send a randomly generated 128 byte authorization token to the client.
+2. The client signs this token with either the explicitly specified private SSH key,
+   or all the private SSH keys in the default SSH directory (=~/.ssh=).
+   Then it sends the signatures to the server.
+3. The server verifies each one of the signatures with each authorized keys in the default authorized keys file (=/home/root/.ssh/authorized_keys=), until one of the authorized keys matches the signature.
+
+You can explicitly set the private SSH key to be used via a command line option or an environment variable.

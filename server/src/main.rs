@@ -13,7 +13,6 @@ use tracing::{error, info};
 use tracing_subscriber::{Registry, fmt, layer::SubscriberExt};
 
 use connection::{Connection, video::VideoConnection};
-use version::VersionInfo;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -21,17 +20,9 @@ async fn main() -> Result<(), Error> {
 
     let cli_options = CliOptions::parse();
 
-    let version_info =
-        VersionInfo::get_from_device().context("could not get version information")?;
-
-    info!(
-        "got version information: hardware {:?}, firmware {}",
-        version_info.hardware, version_info.firmware,
-    );
-
     info!("setting up TCP server");
 
-    let mut server = Server::new(cli_options, version_info)
+    let mut server = Server::new(cli_options)
         .await
         .context("could not create new server")?;
 
@@ -43,19 +34,15 @@ async fn main() -> Result<(), Error> {
 #[derive(Debug)]
 pub struct Server {
     listener: TcpListener,
-    version_info: VersionInfo,
 }
 
 impl Server {
-    async fn new(cli_options: CliOptions, version_info: VersionInfo) -> Result<Self, Error> {
+    async fn new(cli_options: CliOptions) -> Result<Self, Error> {
         let listener = TcpListener::bind(&format!("0.0.0.0:{}", cli_options.port))
             .await
             .context(format!("could not bind to port {}", cli_options.port))?;
 
-        Ok(Self {
-            listener,
-            version_info,
-        })
+        Ok(Self { listener })
     }
 
     async fn run(&mut self) -> Result<(), Error> {
@@ -66,31 +53,24 @@ impl Server {
                 .await
                 .context("error while waiting for a TCP connection")?;
 
+            stream.set_nodelay(true).context("could not set nodelay")?;
+
             info!("new connection from {}", addr);
 
             let conn = Connection::new(stream);
-            let version_info = self.version_info;
             spawn(async move {
-                if let Err(error) = Self::task(conn, version_info).await {
-                    error!("connection terminated with error {}", error);
+                if let Err(error) = Self::task(conn).await {
+                    error!("connection terminated with error {:?}", error);
                 }
             });
         }
     }
 
-    async fn task(mut conn: Connection, version_info: VersionInfo) -> Result<(), Error> {
-        info!("sending out version information");
-
-        conn.send_version_info(version_info)
-            .await
-            .context("could not send out version information")?;
-
+    async fn task(mut conn: Connection) -> Result<(), Error> {
         let stream_config = conn
-            .receive_stream_config()
+            .initialize_communication()
             .await
-            .context("could not receive stream config")?;
-
-        info!("received stream config {:?}", &stream_config);
+            .context("error during initializing the communication")?;
 
         let mut video_conn = VideoConnection::new(conn, stream_config)
             .context("could not initialize video connection")?;

@@ -44,7 +44,7 @@ impl FromStr for HardwareVersion {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct FirmwareVersion {
     pub version: usize,
     pub major: usize,
@@ -54,19 +54,25 @@ pub struct FirmwareVersion {
 
 impl PartialOrd for FirmwareVersion {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        match self.version.partial_cmp(&other.version) {
-            Some(core::cmp::Ordering::Equal) => {}
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for FirmwareVersion {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match self.version.cmp(&other.version) {
+            core::cmp::Ordering::Equal => {}
             ord => return ord,
         }
-        match self.major.partial_cmp(&other.major) {
-            Some(core::cmp::Ordering::Equal) => {}
+        match self.major.cmp(&other.major) {
+            core::cmp::Ordering::Equal => {}
             ord => return ord,
         }
-        match self.minor.partial_cmp(&other.minor) {
-            Some(core::cmp::Ordering::Equal) => {}
+        match self.minor.cmp(&other.minor) {
+            core::cmp::Ordering::Equal => {}
             ord => return ord,
         }
-        self.patch.partial_cmp(&other.patch)
+        self.patch.cmp(&other.patch)
     }
 }
 

@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use anyhow::{Context, Error};
-use futures::SinkExt;
 use lz4_flex::compress_prepend_size;
 use tokio::time::{MissedTickBehavior, interval};
 use tracing::{debug, trace};
@@ -49,10 +48,9 @@ impl VideoConnection {
             );
 
             self.conn
-                .framed
-                .send(encoded_buffer.into())
+                .send_raw(encoded_buffer.into())
                 .await
-                .context("could not write frame to the stream")?;
+                .context("could not send next frame")?;
 
             debug!("wrote the data to the output stream");
         }

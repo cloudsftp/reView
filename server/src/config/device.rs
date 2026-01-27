@@ -52,6 +52,7 @@ pub struct DeviceConfig {
 }
 
 impl DeviceConfig {
+    #[allow(unused)]
     pub fn new(version_info: VersionInfo) -> Result<Self, Error> {
         let height = 1872;
         let width = 1404;
