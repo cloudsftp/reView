@@ -7,8 +7,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Parser, Debug)]
 #[command(author, version)]
 pub struct CliOptions {
-    /// Port to listen for the TCP connections
-    #[arg(long, name = "port")]
+    /// Port to listen for the TCP connections (default: 6680)
+    #[arg(long, name = "port", default_value = "6680")]
     pub port: u16,
 }
 
