@@ -19,10 +19,10 @@ Based on [[https://github.com/rien/reStream][reStream]].
 
 Please note that this project is still under heavy development.
 The server will open a port (6680 per default) on your reMarkable tablet.
-It authorizes incoming connections based via SSH.
-I am not a cybersecurity expert, please DON'T rely on the correctnes of the implementation.
+It authorizes incoming connections via SSH.
+I am no cybersecurity expert, so please DON'T rely on the correctnes of the implementation.
 Also, the content of the connection is NOT encrypted.
-Refer to the SSH section.
+Please refer to the SSH section for further details.
 
 #+BEGIN_HTML
 <p align="center">
@@ -37,10 +37,13 @@ Refer to the SSH section.
 
 * Prequisites
 
-You need
+On the reMarkable you need
 
-- A private SSH key that was authorized by the reMarkable.
-  Follow [[https://remarkable.guide/guide/access/ssh.html#ssh-access][this]] manual.
+- The server installed and running as a service or manually.
+  Please refer to the Usage section for setup instructions.
+- An authorized public SSH key. Please follow [[https://remarkable.guide/guide/access/ssh.html#ssh-access][this]] manual.
+
+On your PC you need
 
 - Gstreamer
 - Gstreamer Plugins Base
@@ -73,13 +76,18 @@ scp review-server.arm.static root@${REMARKABLE_IP}:review-server
 And then start it manually.
 
 #+begin_src shell
-ssh root@${REMARKABLE_IP} 'RUST_LOG=trace ./review-server --port 6680'
+ssh root@${REMARKABLE_IP}
+RUST_LOG=trace ./review-server
 #+end_src
 
-Note: server does not exit when you abort the SSH command above.
-Consider running the server in a SSH session.
+Note: server does not exit when you run it as an SSH command directly and then abort it with Control+C.
 
-TODO: Install it as service
+You can also install it as a service.
+
+#+begin_src shell
+scp review.service root@${REMARKABLE_IP}:/etc/systemd/system
+ssh root@${REMARKABLE_IP} 'systemctl enable --now review'
+#+end_src
 
 ** Client
 
@@ -150,7 +158,7 @@ SSH is only used for authorization, not encryption.
 
 ** Authentification
 
-1. The server send a randomly generated 128 byte authorization token to the client.
+1. The server send a randomly generated 256 byte authorization token to the client.
 2. The client signs this token with either the explicitly specified private SSH key,
    or all the private SSH keys in the default SSH directory (=~/.ssh=).
    Then it sends the signatures to the server.
