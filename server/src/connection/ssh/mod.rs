@@ -123,7 +123,7 @@ impl Connection {
 fn get_authorized_key_matching_signature(
     token: &AuthentificationToken,
     signature: &SshSig,
-    authorized_keys: &Vec<Entry>,
+    authorized_keys: &[Entry],
 ) -> Option<PublicKey> {
     authorized_keys
         .iter()

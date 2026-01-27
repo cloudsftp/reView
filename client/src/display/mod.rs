@@ -1,5 +1,3 @@
-
-
 use anyhow::{Context, Error};
 use gstreamer_app::AppSrc;
 use gstreamer_video::VideoFormat;
@@ -9,7 +7,8 @@ use gstreamer::{Pipeline, prelude::*};
 
 #[derive(Debug)]
 pub struct Display {
-    pipeline: Pipeline,
+    #[allow(unused)]
+    pipeline: Pipeline, // only for keeping alive (TODO: check if realy needed)
     appsrc: AppSrc,
 }
 

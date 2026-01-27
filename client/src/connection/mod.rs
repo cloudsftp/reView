@@ -120,6 +120,7 @@ impl Connection {
             .map(|_| ())
     }
 
+    #[allow(unused)]
     async fn send_raw(&mut self, msg: Bytes) -> Result<(), Error> {
         self.framed
             .send(msg)

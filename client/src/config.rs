@@ -33,8 +33,8 @@ pub struct CliOptions {
     framerate: Option<f32>,
 
     /// Dark mode - invert colors (default: false)
-    #[arg(long, name = "dark-mode")]
-    dark_mode: bool,
+    //#[arg(long, name = "dark-mode")]
+    //dark_mode: bool,
 
     /// Show cursor (default: false)
     #[arg(long, name = "show-cursor")]
@@ -45,7 +45,8 @@ pub struct CliOptions {
 pub struct ClientOptions {
     pub remarkable_ip: String,
     pub ssh_key: Option<PathBuf>,
-    pub dark_mode: bool,
+    // TODO: implement dark mode
+    // pub dark_mode: bool,
     pub tcp_port: u16,
     pub show_cursor: bool,
     pub framerate: f32,
@@ -82,7 +83,7 @@ impl From<CliOptions> for ClientOptions {
                 },
                 DEFAULT_FRAMERATE,
             ),
-            dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
+            //dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
             show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),
         }
     }
@@ -136,10 +137,11 @@ fn resolve_with<T>(
         "read environment variable '{}': {:?}",
         variable_name, env_string,
     );
-    parse(env_string.unwrap_or_else(|_| panic!("could not get environment varialbe '{}'",
-        variable_name)))
-    .unwrap_or_else(|_| panic!("could not parse environemt variable '{}'",
-        variable_name))
+    parse(
+        env_string
+            .unwrap_or_else(|_| panic!("could not get environment varialbe '{}'", variable_name)),
+    )
+    .unwrap_or_else(|_| panic!("could not parse environemt variable '{}'", variable_name))
 }
 
 fn resolve_with_optional<T>(
@@ -161,8 +163,9 @@ fn resolve_with_optional<T>(
             "read environment variable '{}': {}",
             variable_name, env_string,
         );
-        return Some(parse(env_string).unwrap_or_else(|_| panic!("could not parse environemt variable '{}'",
-            variable_name)));
+        return Some(parse(env_string).unwrap_or_else(|_| {
+            panic!("could not parse environemt variable '{}'", variable_name)
+        }));
     }
 
     None

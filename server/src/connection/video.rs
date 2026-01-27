@@ -1,7 +1,6 @@
 use std::time::Duration;
 
 use anyhow::{Context, Error};
-use futures::SinkExt;
 use lz4_flex::compress_prepend_size;
 use tokio::time::{MissedTickBehavior, interval};
 use tracing::{debug, trace};

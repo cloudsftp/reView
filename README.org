@@ -96,7 +96,6 @@ Options:
       --tcp-port <tcp-port>            TCP port for video stream (default: 6680)
       --ssh-key <ssh-key>              Private SSH key file path. If not specified, attempting all keys in the SSH directory
       --framerate <framerate>          Framerate (default: 50)
-      --dark-mode                      Dark mode - invert colors (default: false)
       --show-cursor                    Show cursor (default: false)
   -h, --help                           Print help
   -V, --version                        Print version
@@ -109,7 +108,6 @@ Corresponding keys:
 - =REMARKABLE_TCP_PORT=
 - =REMARKABLE_SSH_KEY_PATH=
 - =REMARKABLE_FRAMERATE=
-- =REMARKABLE_DARK_MODE=
 - =REMARKABLE_SHOW_CURSOR=
 
 * Building

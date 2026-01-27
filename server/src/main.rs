@@ -13,7 +13,6 @@ use tracing::{error, info};
 use tracing_subscriber::{Registry, fmt, layer::SubscriberExt};
 
 use connection::{Connection, video::VideoConnection};
-use version::VersionInfo;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {

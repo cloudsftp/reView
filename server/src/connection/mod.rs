@@ -77,6 +77,7 @@ impl Connection {
         Ok(stream_config)
     }
 
+    #[allow(unused)]
     async fn receive_raw(&mut self) -> Result<BytesMut, Error> {
         self.framed
             .next()
