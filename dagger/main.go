@@ -31,6 +31,12 @@ func (m *ReView) CheckAndTestAll(ctx context.Context, source *dagger.Directory) 
 	}
 	output = output + "\n\n" + o
 
+	o, err = linuxContainer(source).WithExec([]string{"cargo", "clippy", "--", "-D", "warnings"}).Stdout(ctx)
+	if err != nil {
+		return o, err
+	}
+	output = output + "\n\n" + o
+
 	return "ok", nil
 }
 
@@ -51,6 +57,9 @@ func linuxContainer(source *dagger.Directory) *dagger.Container {
 	return dag.Container().
 		From("rust:"+RustVersion+"-trixie").
 		WithExec([]string{"apt", "update"}).
+		WithExec([]string{
+			"rustup", "component", "add", "clippy",
+		}).
 		WithExec([]string{
 			"apt", "install", "-y",
 			"libgstreamer1.0-dev",
