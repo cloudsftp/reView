@@ -26,8 +26,8 @@ Please refer to the SSH section for further details.
 
 #+BEGIN_HTML
 <p align="center">
-    <a href="https://img.shields.io/badge/Version-v0.1.0-blue">
-        <img src="https://img.shields.io/badge/Version-v0.1.0-blue">
+    <a href="https://img.shields.io/badge/Version-v0.2.0-blue">
+        <img src="https://img.shields.io/badge/Version-v0.2.0-blue">
     </a>
     <a href="https://github.com/cloudsftp/reView/actions/workflows/compile.yaml">
         <img src="https://github.com/cloudsftp/reView/actions/workflows/compile.yaml/badge.svg">

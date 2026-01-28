@@ -97,6 +97,7 @@ fn resolve_option<T: From<String>>(cli_value: Option<T>, variable_name: &str, de
     )
 }
 
+/*
 fn resolve_boolean_option(cli_value: bool, variable_name: &str, default: bool) -> bool {
     let cli_value = if cli_value { Some(true) } else { None };
     resolve_with(
@@ -116,6 +117,7 @@ fn resolve_boolean_option(cli_value: bool, variable_name: &str, default: bool) -
         default,
     )
 }
+*/
 
 fn resolve_with<T>(
     cli_value: Option<T>,
