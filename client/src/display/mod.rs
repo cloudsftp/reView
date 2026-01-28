@@ -8,7 +8,6 @@ use gstreamer::{Pipeline, prelude::*};
 #[derive(Debug)]
 pub struct Display {
     #[allow(unused)]
-    pipeline: Pipeline, // only for keeping alive (TODO: check if realy needed)
     appsrc: AppSrc,
 }
 
@@ -22,7 +21,7 @@ impl Display {
             .set_state(gstreamer::State::Playing)
             .context("could not start playing gstreamer pipeline")?;
 
-        Ok(Self { pipeline, appsrc })
+        Ok(Self { appsrc })
     }
 
     pub fn push_frame(&mut self, frame: Vec<u8>) -> Result<(), Error> {
