@@ -92,6 +92,7 @@ impl FramedTcpConnection {
         Ok(stream_config)
     }
 
+    #[allow(unused)]
     pub async fn receive_raw(&mut self) -> Result<BytesMut, Error> {
         self.framed
             .next()
