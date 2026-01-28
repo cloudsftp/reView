@@ -64,7 +64,8 @@ impl Connection {
         let stream_config = StreamConfig {
             device_config: device_config.clone(),
             framerate: client_options.framerate,
-            show_cursor: client_options.show_cursor,
+            //show_cursor: client_options.show_cursor,
+            show_cursor: false,
         };
 
         info!("sending out stream config {:?}", &stream_config);

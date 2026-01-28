@@ -31,14 +31,13 @@ pub struct CliOptions {
     /// Framerate (default: 50)
     #[arg(long, name = "framerate")]
     framerate: Option<f32>,
-
-    /// Dark mode - invert colors (default: false)
+    // Dark mode - invert colors (default: false)
     //#[arg(long, name = "dark-mode")]
     //dark_mode: bool,
 
-    /// Show cursor (default: false)
-    #[arg(long, name = "show-cursor")]
-    show_cursor: bool,
+    // Show cursor (default: false)
+    //#[arg(long, name = "show-cursor")]
+    //show_cursor: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -48,7 +47,7 @@ pub struct ClientOptions {
     // TODO: implement dark mode
     // pub dark_mode: bool,
     pub tcp_port: u16,
-    pub show_cursor: bool,
+    //pub show_cursor: bool,
     pub framerate: f32,
 }
 
@@ -84,7 +83,7 @@ impl From<CliOptions> for ClientOptions {
                 DEFAULT_FRAMERATE,
             ),
             //dark_mode: resolve_boolean_option(value.dark_mode, "REMARKABLE_DARK_MODE", false),
-            show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),
+            //show_cursor: resolve_boolean_option(value.show_cursor, "REMARKABLE_SHOW_CURSOR", false),
         }
     }
 }
