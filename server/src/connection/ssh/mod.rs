@@ -74,7 +74,8 @@ pub struct AuthorizedPublicKey {
 impl Connection {
     pub async fn authenticate(&mut self) -> Result<PublicKey, Error> {
         let token = AuthentificationToken::new();
-        self.send(&token)
+        self.framed
+            .send(&token)
             .await
             .context("could not send authentification token to client")?;
 
@@ -93,6 +94,7 @@ impl Connection {
         let authorized_keys = get_authorized_keys().context("could not get authorized keys")?;
 
         let signatures: Signatures = self
+            .framed
             .receive()
             .await
             .context("could not receive public keys")?;
@@ -112,7 +114,8 @@ impl Connection {
             index: authorized_key_index,
         };
 
-        self.send(&authorized_key_message)
+        self.framed
+            .send(&authorized_key_message)
             .await
             .context("could not send index of authorized key")?;
 

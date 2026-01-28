@@ -26,6 +26,7 @@ impl VideoConnection {
 
             let compressed_frame = self
                 .conn
+                .framed
                 .receive_raw()
                 .await
                 .context("could not reveive next frame")?;

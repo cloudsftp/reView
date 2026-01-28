@@ -15,6 +15,7 @@ use keys::get_keys_to_check;
 impl Connection {
     pub async fn authenticate(&mut self, client_options: ClientOptions) -> Result<(), Error> {
         let token: AuthentificationToken = self
+            .framed
             .receive()
             .await
             .context("could not receive authentification token")?;
@@ -71,11 +72,13 @@ impl Connection {
 
         let signatures: Signatures = signatures.try_into()?;
 
-        self.send(&signatures)
+        self.framed
+            .send(&signatures)
             .await
             .context("could not send over all public keys to check")?;
 
         let authorized_key: AuthorizedPublicKey = self
+            .framed
             .receive()
             .await
             .context("could not receive authorized key index")?;

@@ -16,14 +16,14 @@ use crate::version::VersionInfo;
 
 #[derive(Debug)]
 pub struct Connection {
-    framed: Framed<TcpStream, LengthDelimitedCodec>,
+    framed: FramedTcpConnection,
 }
 
 impl Connection {
     pub fn new(stream: TcpStream) -> Self {
-        let framed = Framed::new(stream, LengthDelimitedCodec::new());
+        let framed = FramedTcpConnection::new(stream);
 
-        Connection { framed }
+        Self { framed }
     }
 
     pub async fn initialize_communication(&mut self) -> Result<StreamConfig, Error> {
@@ -41,11 +41,13 @@ impl Connection {
 
         info!("sending out version information");
 
-        self.send(&version_info)
+        self.framed
+            .send(&version_info)
             .await
             .context("could not send out version information")?;
 
         let stream_config: StreamConfig = self
+            .framed
             .receive()
             .await
             .context("could not receive stream config")?;
@@ -54,8 +56,21 @@ impl Connection {
 
         Ok(stream_config)
     }
+}
 
-    async fn receive<T: DeserializeOwned>(&mut self) -> Result<T, Error> {
+#[derive(Debug)]
+pub struct FramedTcpConnection {
+    framed: Framed<TcpStream, LengthDelimitedCodec>,
+}
+
+impl FramedTcpConnection {
+    pub fn new(stream: TcpStream) -> Self {
+        let framed = Framed::new(stream, LengthDelimitedCodec::new());
+
+        Self { framed }
+    }
+
+    pub async fn receive<T: DeserializeOwned>(&mut self) -> Result<T, Error> {
         let msg = self
             .framed
             .next()
@@ -77,8 +92,7 @@ impl Connection {
         Ok(stream_config)
     }
 
-    #[allow(unused)]
-    async fn receive_raw(&mut self) -> Result<BytesMut, Error> {
+    pub async fn receive_raw(&mut self) -> Result<BytesMut, Error> {
         self.framed
             .next()
             .await
@@ -86,7 +100,7 @@ impl Connection {
             .context("could not receive raw message".to_string())
     }
 
-    async fn send<T: Serialize>(&mut self, value: &T) -> Result<(), Error> {
+    pub async fn send<T: Serialize>(&mut self, value: &T) -> Result<(), Error> {
         let msg = bson::serialize_to_vec(value)
             .context(format!("could not serialize type {}", type_name::<T>()))?;
 
@@ -100,7 +114,7 @@ impl Connection {
             .map(|_| ())
     }
 
-    async fn send_raw(&mut self, msg: Bytes) -> Result<(), Error> {
+    pub async fn send_raw(&mut self, msg: Bytes) -> Result<(), Error> {
         self.framed
             .send(msg)
             .await

@@ -1,27 +1,20 @@
 mod ssh;
 pub mod video;
 
-use std::any::type_name;
-
 use anyhow::{Context, Error};
-use futures::{SinkExt, StreamExt};
 use review_server::{
     config::{StreamConfig, device::DeviceConfig},
+    connection::FramedTcpConnection,
     version::VersionInfo,
 };
-use serde::{Serialize, de::DeserializeOwned};
 use tokio::net::TcpStream;
-use tokio_util::{
-    bytes::{Bytes, BytesMut},
-    codec::{Framed, LengthDelimitedCodec},
-};
 use tracing::info;
 
 use crate::config::ClientOptions;
 
 #[derive(Debug)]
 pub struct Connection {
-    framed: Framed<TcpStream, LengthDelimitedCodec>,
+    framed: FramedTcpConnection,
 }
 
 impl Connection {
@@ -36,9 +29,9 @@ impl Connection {
 
         stream.set_nodelay(true).context("could not set nodelay")?;
 
-        let framed = Framed::new(stream, LengthDelimitedCodec::new());
+        let framed = FramedTcpConnection::new(stream);
 
-        Ok(Connection { framed })
+        Ok(Self { framed })
     }
 
     pub async fn initialize_communication(
@@ -50,6 +43,7 @@ impl Connection {
             .context("error while authenticating")?;
 
         let version_info: VersionInfo = self
+            .framed
             .receive()
             .await
             .context("could not receive version info")?;
@@ -70,63 +64,11 @@ impl Connection {
 
         info!("sending out stream config {:?}", &stream_config);
 
-        self.send(&stream_config)
+        self.framed
+            .send(&stream_config)
             .await
             .context("could not send device config")?;
 
         Ok(device_config)
-    }
-
-    async fn receive<T: DeserializeOwned>(&mut self) -> Result<T, Error> {
-        let msg = self
-            .framed
-            .next()
-            .await
-            .context(format!(
-                "connection closed before message of type {} was received",
-                type_name::<T>(),
-            ))?
-            .context(format!(
-                "could not receive message of type {}",
-                type_name::<T>()
-            ))?;
-
-        let stream_config = bson::deserialize_from_slice(&msg).context(format!(
-            "could not deserialize message of type {}",
-            type_name::<T>(),
-        ))?;
-
-        Ok(stream_config)
-    }
-
-    async fn receive_raw(&mut self) -> Result<BytesMut, Error> {
-        self.framed
-            .next()
-            .await
-            .context("connection closed before raw message was received".to_string())?
-            .context("could not receive raw message".to_string())
-    }
-
-    async fn send<T: Serialize>(&mut self, value: &T) -> Result<(), Error> {
-        let msg = bson::serialize_to_vec(value)
-            .context(format!("could not serialize type {}", type_name::<T>()))?;
-
-        self.framed
-            .send(msg.into())
-            .await
-            .context(format!(
-                "could not send serialized message of type {}",
-                type_name::<T>()
-            ))
-            .map(|_| ())
-    }
-
-    #[allow(unused)]
-    async fn send_raw(&mut self, msg: Bytes) -> Result<(), Error> {
-        self.framed
-            .send(msg)
-            .await
-            .context("could not send raw message".to_string())
-            .map(|_| ())
     }
 }

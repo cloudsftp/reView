@@ -48,6 +48,7 @@ impl VideoConnection {
             );
 
             self.conn
+                .framed
                 .send_raw(encoded_buffer.into())
                 .await
                 .context("could not send next frame")?;
