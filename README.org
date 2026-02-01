@@ -146,10 +146,16 @@ dagger call build-server --source . export --path review-server.arm.static
 
 ** Additional Dependencies
 
+*** Ubuntu
+
+#+begin_src shell
+sudo apt install gcc pkg-config libglib2.0-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+#+end_src
+
 *** openSUSE
 
 #+begin_src shell
-sudo zypper in gstreamer-devel gstreamer-plugins-base-devel
+sudo zypper in gcc pkg-config glib2-devel gstreamer-devel gstreamer-plugins-base-devel
 #+end_src
 
 * SSH
